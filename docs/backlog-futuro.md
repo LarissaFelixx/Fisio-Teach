@@ -1,14 +1,14 @@
-# Sprint 2 — Detalhamento das atividades
+# Backlog futuro — melhorias mapeadas após a Sprint 4
 
-Documento de apoio ao `FisioTech_Documentacao_Entrega_Sprint2.docx`. Cada item abaixo
-corresponde a uma linha da tabela da seção 4 e serve de base para abrir a issue no project.
-
-O escopo foi derivado do estado atual do repositório `fisiotech-back` ao final da Sprint 1,
-não de suposições: cada item aponta o arquivo ou a lacuna concreta que o motiva.
+Este documento **não faz parte das sprints entregues**. Reúne as lacunas identificadas na
+revisão do código ao final da Sprint 4 e serve de insumo para o planejamento seguinte.
+A numeração usada aqui é local e **não** corresponde aos itens Fisio-Teach do board.
+O escopo foi derivado do estado do repositório `fisiotech-back` ao final da Sprint 4: cada
+item aponta o arquivo ou a lacuna concreta que o motiva, não uma suposição.
 
 ---
 
-## Fisio-Teach #5 — Migrar a autenticação de HTTP Basic para JWT
+## Melhoria 1 — Migrar a autenticação de HTTP Basic para JWT
 
 **Situação atual:** `admin/config/SecurityConfig.java` usa `httpBasic(...)`. Toda requisição
 carrega e-mail e senha em Base64, e o app precisa guardar a senha do usuário em claro para
@@ -27,7 +27,7 @@ funcionar apenas com token; nenhuma rota autenticada aceita mais Basic.
 
 ---
 
-## Fisio-Teach #6 — Versionar o schema do banco com migrações Flyway
+## Melhoria 2 — Versionar o schema do banco com migrações Flyway
 
 **Situação atual:** `application-prod.properties` usa `ddl-auto=validate`, mas não existe
 nenhum script de schema no repositório. O README instrui a "garantir que o schema MySQL já
@@ -46,7 +46,7 @@ completo sem intervenção manual.
 
 ---
 
-## Fisio-Teach #7 — Publicar a API em ambiente de homologação e gerar o .apk conectado a ela
+## Melhoria 3 — Publicar a API em ambiente de homologação e gerar o .apk conectado a ela
 
 **Situação atual:** o profile `prod` existe mas nunca foi exercido; o `.apk` da Sprint 1
 aponta para `localhost`. O `corsConfigurationSource` tem origens fixas
@@ -61,11 +61,11 @@ aponta para `localhost`. O `corsConfigurationSource` tem origens fixas
 **Critério de aceite:** o `.apk` instalado em um celular qualquer, fora da rede de
 desenvolvimento, completa o fluxo de cadastro → agendamento → mensagem.
 
-**Dependência:** #6 (schema versionado) precisa estar pronto antes.
+**Dependência:** Melhoria 2 (schema versionado) precisa estar pronto antes.
 
 ---
 
-## Fisio-Teach #8 — Automatizar build e testes em pipeline de integração contínua
+## Melhoria 4 — Automatizar build e testes em pipeline de integração contínua
 
 **Situação atual:** não existe `.github/workflows/`. Os testes de service escritos na Sprint 1
 só rodam se alguém lembrar de executar `./mvnw test` localmente.
@@ -80,7 +80,7 @@ só rodam se alguém lembrar de executar `./mvnw test` localmente.
 
 ---
 
-## Fisio-Teach #9 — Implementar a recuperação de senha por e-mail
+## Melhoria 5 — Implementar a recuperação de senha por e-mail
 
 **Situação atual:** existe apenas troca de senha autenticada (`PUT /me/senha` e o
 autoatendimento de profissional/admin entregue em F-02), que exige a senha atual. Um usuário
@@ -97,7 +97,7 @@ que esquece a senha depende de intervenção manual no banco.
 
 ---
 
-## Fisio-Teach #10 — Registrar a evolução clínica e o plano terapêutico por sessão
+## Melhoria 6 — Registrar a evolução clínica e o plano terapêutico por sessão
 
 **Situação atual:** `Consulta` guarda quadro clínico, hábitos de vida, exame físico e
 diagnóstico — ou seja, a **avaliação inicial**. Não há como registrar o que foi feito em cada
@@ -116,7 +116,7 @@ paciente visualiza seu histórico de tratamento.
 
 ---
 
-## Fisio-Teach #11 — Construir a agenda e os indicadores do profissional
+## Melhoria 7 — Construir a agenda e os indicadores do profissional
 
 **Situação atual:** existe `DisponibilidadeService` (horários livres para agendamento), mas o
 profissional só tem uma listagem plana de consultas. Não há visão de dia/semana nem números
@@ -133,7 +133,7 @@ precisar navegar por listas.
 
 ---
 
-## Fisio-Teach #12 — Paginar, filtrar e ordenar as listagens da API e do aplicativo
+## Melhoria 8 — Paginar, filtrar e ordenar as listagens da API e do aplicativo
 
 **Situação atual:** todos os repositórios retornam `List<T>` com `Sort`
 (`PacienteRepository.findByProfissionalId`, `ConsultaRepository.findByProfissionalId`, a caixa
@@ -150,7 +150,7 @@ de teste isso não aparece, mas degrada rápido em uso real e pesa no celular.
 
 ---
 
-## Fisio-Teach #13 — Cobrir os endpoints com testes de integração automatizados
+## Melhoria 9 — Cobrir os endpoints com testes de integração automatizados
 
 **Situação atual:** há testes de unidade para os services, com repositórios mockados. A regra
 de isolamento por dono — devolver **404 em vez de 403** quando o recurso é de outro
@@ -162,31 +162,20 @@ partes") não são verificadas na camada HTTP, que é onde elas realmente valem.
 - Casos de autorização negativa: cada papel tentando acessar rotas dos outros dois.
 - Casos de regra de negócio: horário ocupado, avaliação antes da consulta realizada, mensagem
   sem consulta prévia.
-- Pipeline (#8) executando essa suíte.
+- Pipeline (Melhoria 4) executando essa suíte.
 
 **Critério de aceite:** a suíte falha se alguém remover uma verificação de posse de recurso.
 
 ---
 
-## Fisio-Teach #14 — Criação de documentação e entrega de sprint
-
-**Escopo**
-- Atualizar o README do back com JWT, migrações, paginação e URL de homologação.
-- Atualizar o README do front com a nova configuração de ambiente.
-- Documento de entrega da Sprint 2 com o quadro de atividades e os prints do app.
-
-**Critério de aceite:** um integrante novo consegue subir o projeto seguindo só a documentação.
-
----
-
-## Dependências entre os itens
+## Dependências entre as melhorias
 
 ```
-#6 (Flyway) ──► #7 (homologação) ──► #14 (documentação)
-#5 (JWT)    ──► #7
-#8 (CI)     ──► #13 (a suíte precisa rodar no pipeline)
-#10, #11, #12 são independentes entre si
+Melhoria 2 (Flyway) ──► Melhoria 3 (homologação)
+Melhoria 1 (JWT)    ──► Melhoria 3
+Melhoria 4 (CI)     ──► Melhoria 9 (a suíte precisa rodar no pipeline)
+Melhorias 5, 6, 7 e 8 são independentes entre si
 ```
 
-Sugestão de ordem: #6 e #5 primeiro (destravam o #7), #8 em paralelo por ser isolado,
-e as features de produto (#10, #11, #12) distribuídas entre os integrantes restantes.
+Sugestão de ordem: 2 e 1 primeiro, porque destravam a 3; a 4 em paralelo, por ser isolada;
+e as melhorias de produto (5, 6, 7 e 8) distribuídas entre os demais integrantes.
