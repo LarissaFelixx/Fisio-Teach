@@ -1,5 +1,7 @@
 package com.app.fisiotech.admin.service;
 
+import com.app.fisiotech.auth.service.AccountSecurityService;
+
 import com.app.fisiotech.admin.dto.AdminCreateRequest;
 import com.app.fisiotech.admin.entity.Admin;
 import com.app.fisiotech.admin.repository.AdminRepository;
@@ -20,6 +22,7 @@ public class AdminService {
 
     private final AdminRepository adminRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AccountSecurityService accountSecurity;
 
     @Transactional
     public Admin criar(AdminCreateRequest request){
@@ -37,7 +40,9 @@ public class AdminService {
               senhaCriptografada
       );
 
-      return adminRepository.save(admin);
+        adminRepository.save(admin);
+        accountSecurity.registerEmail("ADMIN", admin.getId(), admin.getEmail());
+        return admin;
     }
 
 
@@ -51,7 +56,8 @@ public class AdminService {
         }
 
         admin.setSenha(passwordEncoder.encode(request.novaSenha()));
-        adminRepository.save(admin);
+        accountSecurity.revoke("ADMIN", admin.getId());
+          adminRepository.save(admin);
     }
 
 

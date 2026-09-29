@@ -1,6 +1,17 @@
 package com.app.fisiotech.admin.config;
 
 import jakarta.servlet.http.HttpServletResponse;
+import com.app.fisiotech.auth.service.AuthService;
+import com.app.fisiotech.auth.security.AppUserDetailsService;
+import org.springframework.core.env.Environment;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import java.io.IOException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -19,31 +30,54 @@ import java.util.List;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthService authService, Environment environment) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/h2-console/**").access((authentication, context) -> new AuthorizationDecision(environment.matchesProfiles("dev & !prod")))
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/pacientes/cadastro").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/pacientes/cadastro", "/auth/login", "/auth/refresh", "/auth/logout").permitAll()
                         .requestMatchers("/profissionais/me/**").hasRole("PROFISSIONAL")
                         .requestMatchers("/profissionais/**", "/admin/pacientes/**", "/admin/me/**").hasRole("ADMIN")
                         .requestMatchers("/pacientes/**", "/consultas/**", "/mensagens/**", "/avaliacoes/**").hasRole("PROFISSIONAL")
                         .requestMatchers("/me/**").hasRole("PACIENTE")
                         .anyRequest().authenticated()
                 )
-                .httpBasic(basic -> basic.authenticationEntryPoint((request, response, authException) -> {
-                    // Sem customizar isso, o Spring manda o header WWW-Authenticate: Basic em todo 401,
-                    // que faz o navegador abrir o prompt nativo de login por cima da tela do app - mesmo
-                    // já existindo um formulário de login próprio tratando o 401 certinho.
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.setContentType("application/json;charset=UTF-8");
-                    response.getWriter().write("{\"message\":\"Credenciais inválidas.\"}");
-                }));
-
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
+                .requestCache(AbstractHttpConfigurer::disable)
+                .exceptionHandling(errors -> errors
+                        .authenticationEntryPoint((request, response, ex) -> writeError(response, 401, "Autenticação inválida ou ausente."))
+                        .accessDeniedHandler((request, response, ex) -> writeError(response, 403, "Acesso negado.")))
+                .oauth2ResourceServer(resource -> resource
+                        .authenticationEntryPoint((request, response, ex) -> writeError(response, 401, "Token inválido ou expirado."))
+                        .accessDeniedHandler((request, response, ex) -> writeError(response, 403, "Acesso negado."))
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(token -> {
+                            var user = authService.authenticate(token);
+                            return UsernamePasswordAuthenticationToken
+                                    .authenticated(user, null, user.getAuthorities());
+                        })));
         return http.build();
+    }
+
+    private static void writeError(HttpServletResponse response, int status, String message) throws IOException {
+        response.setStatus(status);
+        if (status == 401) response.setHeader("WWW-Authenticate", "Bearer");
+        response.setContentType("application/json;charset=UTF-8");
+        String error = status == 401 ? "Unauthorized" : "Forbidden";
+        response.getWriter().write("{\"status\":" + status + ",\"error\":\"" + error + "\",\"message\":\"" + message + "\"}");
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AppUserDetailsService users, PasswordEncoder passwordEncoder) {
+        var provider = new DaoAuthenticationProvider(users);
+        provider.setPasswordEncoder(passwordEncoder);
+        return new ProviderManager(provider);
     }
 
     @Bean

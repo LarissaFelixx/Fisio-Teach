@@ -26,6 +26,21 @@ public class AppUserDetailsService implements UserDetailsService {
     private final AdminRepository adminRepository;
     private final PacienteRepository pacienteRepository;
 
+    public AuthenticatedUser loadBySubject(String subject) {
+        try {
+            String[] parts = subject.split(":", 2);
+            Long id = Long.valueOf(parts[1]);
+            return switch (parts[0]) {
+                case "ADMIN" -> adminRepository.findById(id).map(this::toAuthenticatedUser).orElseThrow();
+                case "PROFISSIONAL" -> profissionalRepository.findById(id).map(this::toAuthenticatedUser).orElseThrow();
+                case "PACIENTE" -> pacienteRepository.findById(id).map(this::toAuthenticatedUser).orElseThrow();
+                default -> throw new IllegalArgumentException();
+            };
+        } catch (IllegalArgumentException | java.util.NoSuchElementException | IndexOutOfBoundsException ex) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Conta inválida.");
+        }
+    }
+
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         String emailNormalizado = email.trim().toLowerCase(Locale.ROOT);
