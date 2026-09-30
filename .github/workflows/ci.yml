@@ -14,8 +14,10 @@ concurrency:
 
 permissions:
   contents: read
-  # O relatório de testes é publicado como um check run próprio no commit/PR.
+  # O relatório de testes é publicado como um check run próprio no commit/PR...
   checks: write
+  # ...e como comentário no PR.
+  pull-requests: write
 
 jobs:
   build:
@@ -39,24 +41,26 @@ jobs:
         run: ./mvnw -B -ntp verify
 
       # Roda mesmo se algum teste falhar (é justamente quando o relatório mais importa),
-      # mas não quando a execução foi cancelada por um push mais novo.
+      # mas não quando a execução foi cancelada por um push mais novo. Publica:
+      # - no resumo da execução: totais + tabela de todos os testes, agrupados por classe;
+      # - um check "Relatório de testes" no commit, com anotação na linha de cada falha;
+      # - em PRs, um comentário com o mesmo resumo (atualizado a cada push, não duplicado).
       - name: Relatório de testes
         if: ${{ !cancelled() }}
-        uses: dorny/test-reporter@v3
+        uses: mikepenz/action-junit-report@v6
         with:
-          name: Relatório de testes
-          path: target/surefire-reports/TEST-*.xml
-          reporter: java-junit
-          report-title: Relatório de testes
-          badge-title: testes
-          # Um XML por classe de teste: listar os arquivos só duplicaria as suítes.
-          list-files: none
-          list-suites: all
-          list-tests: all
+          report_paths: target/surefire-reports/TEST-*.xml
+          check_name: Relatório de testes
+          detailed_summary: true
+          group_suite: true
+          include_passed: true
+          include_time_in_summary: true
+          simplified_summary: true
+          comment: ${{ github.event_name == 'pull_request' }}
           # Quem reprova o build é o passo "Build e testes"; aqui é só relatório.
-          fail-on-error: false
+          fail_on_failure: false
           # Se a compilação falhar não há XML de teste; não vale um segundo erro por isso.
-          fail-on-empty: false
+          require_tests: false
 
       - name: Anexar XMLs dos testes
         if: ${{ !cancelled() }}
