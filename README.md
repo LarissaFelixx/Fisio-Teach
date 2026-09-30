@@ -1,5 +1,7 @@
 # FisioTech — Backend
 
+[![CI](https://github.com/gabrielneriqa/fisiotech-back/actions/workflows/ci.yml/badge.svg)](https://github.com/gabrielneriqa/fisiotech-back/actions/workflows/ci.yml)
+
 API REST para um sistema de gestão de clínica de fisioterapia. Permite que um **administrador** cadastre **profissionais**, que cada profissional gerencie seus próprios **pacientes**, **consultas**, **mensagens** e **avaliações**, e que o próprio **paciente** acompanhe seu tratamento e converse com o profissional através de uma área de autoatendimento (`/me`).
 
 Este documento cobre tudo que é necessário para clonar o projeto em qualquer máquina, rodá-lo localmente e testá-lo via HTTP (curl/Postman) ou junto com o front-end ([FisioTech-front](https://github.com/gabrielneriqa/fisiotech-front)).
@@ -85,6 +87,10 @@ Se você mudar a porta, lembre de ajustar também o `proxy.conf.js` do front-end
 ```bash
 ./mvnw test
 ```
+
+### Integração contínua
+
+Todo push e pull request para `master` dispara o workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) no GitHub Actions, que instala o JDK 21 e roda `./mvnw verify` (compila, executa os testes e empacota o jar). Não é preciso nenhum segredo nem banco externo: os testes usam o H2 em memória. Se algum teste falhar, os relatórios do Surefire ficam disponíveis como artefato da execução.
 
 ## Console do H2 (modo dev)
 
