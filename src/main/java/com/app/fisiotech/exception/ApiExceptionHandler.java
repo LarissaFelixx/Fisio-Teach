@@ -54,6 +54,12 @@ public class ApiExceptionHandler {
                 .body(criarCorpoErro(HttpStatus.BAD_REQUEST, ex.getMessage()));
     }
 
+    @ExceptionHandler(CodigoRecuperacaoInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleCodigoRecuperacaoInvalido(CodigoRecuperacaoInvalidoException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(criarCorpoErro(HttpStatus.BAD_REQUEST, ex.getMessage()));
+    }
+
     @ExceptionHandler(EstadoInvalidoException.class)
     public ResponseEntity<Map<String, Object>> handleEstadoInvalido(EstadoInvalidoException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)

@@ -109,7 +109,7 @@ Com a aplicação rodando, a documentação OpenAPI/Swagger fica disponível em:
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - JSON da spec: `http://localhost:8080/v3/api-docs`
 
-Os caminhos do Swagger são públicos; `/h2-console/**` é liberado apenas em `dev` sem `prod`; as rotas protegidas exigem JWT Bearer. Login, renovação, logout e cadastro de pacientes são públicos nos métodos definidos pela API.
+Os caminhos do Swagger são públicos; `/h2-console/**` é liberado apenas em `dev` sem `prod`; as rotas protegidas exigem JWT Bearer. Login, renovação, logout, cadastro de pacientes e os dois endpoints de [recuperação de senha](#recuperação-de-senha-esqueci-minha-senha) são públicos nos métodos definidos pela API.
 
 ## Autenticação e papéis
 
@@ -131,6 +131,26 @@ senha: 12345678
 ```
 
 Em produção (profile `prod`), o admin é criado a partir das variáveis de ambiente `ADMIN_NOME`, `ADMIN_EMAIL` e `ADMIN_SENHA` (veja [Deploy em produção](#deploy-em-produção-profile-prod)) — não existe usuário admin fixo em produção.
+
+### Recuperação de senha ("esqueci minha senha")
+
+Vale para os três papéis (profissional, admin e paciente) e funciona em duas etapas, ambas **sem autenticação**:
+
+1. `POST /auth/recuperar-senha` com `{"email": "..."}` — gera um código de **6 dígitos**, válido por **15 minutos**, e envia por email. Responde **sempre 204**, exista ou não a conta (para não revelar quem tem cadastro). Pedir de novo invalida o código anterior.
+2. `POST /auth/redefinir-senha` com `{"email": "...", "codigo": "123456", "novaSenha": "..."}` — troca a senha, encerra todas as sessões JWT abertas da conta (como na troca de senha logado) e responde 204. Qualquer problema (código errado, expirado, já usado ou mais de **5 tentativas**) responde o mesmo **400** `"Código inválido ou expirado."`; nesse caso, peça um código novo.
+
+No profile `dev` nenhum email é enviado: o código aparece no log da aplicação, numa linha `[DEV] Código de recuperação de senha para ...`.
+
+```bash
+curl -X POST http://localhost:8080/auth/recuperar-senha \
+  -H "Content-Type: application/json" \
+  -d '{"email": "joao@paciente.com"}'
+
+# pegue o código no log e:
+curl -X POST http://localhost:8080/auth/redefinir-senha \
+  -H "Content-Type: application/json" \
+  -d '{"email": "joao@paciente.com", "codigo": "123456", "novaSenha": "outraSenha123"}'
+```
 
 ## Testando a API do zero (fluxo completo via curl)
 
@@ -266,7 +286,7 @@ Organização por *domínio/feature* (não por camada técnica) dentro de `src/m
 
 ```
 admin/          # configuração de segurança (SecurityConfig), seed do admin
-auth/           # endpoint /auth/me, AuthenticatedUser, UserDetailsService
+auth/           # endpoint /auth/me, recuperação de senha, AuthenticatedUser, UserDetailsService
 profissional/   # entidade, controller, service, repository e DTOs do Profissional
 paciente/       # idem para Paciente
 consulta/       # idem para Consulta (com sub-objetos @Embeddable: quadro clínico, hábitos de vida, exame físico, diagnóstico)
@@ -292,8 +312,30 @@ Antes da primeira implantação JWT, execute a auditoria e a migração SQL desc
 | `ADMIN_NOME` | Nome do usuário admin a ser criado na primeira subida |
 | `ADMIN_EMAIL` | Email do admin |
 | `ADMIN_SENHA` | Senha do admin (mínimo 8 caracteres) |
+| `SPRING_MAIL_HOST` | Servidor SMTP usado para enviar o código de recuperação de senha, ex: `smtp.gmail.com` |
+| `SPRING_MAIL_PORT` | Porta do SMTP, ex: `587` (STARTTLS) |
+| `SPRING_MAIL_USERNAME` | Usuário do SMTP |
+| `SPRING_MAIL_PASSWORD` | Senha do SMTP (no Gmail, uma *senha de app*) |
+| `MAIL_REMETENTE` | Endereço que aparece como remetente do email, ex: `no-reply@seudominio.com` |
+
+Sem `SPRING_MAIL_HOST` a aplicação sobe normalmente, mas a recuperação de senha não envia nada (fica só um erro no log).
 
 Em produção o schema é validado (`ddl-auto=validate`), não gerado automaticamente — garanta que o schema MySQL já exista com as tabelas corretas antes de subir a aplicação (ou gere-o rodando a aplicação uma vez fora do profile `prod`, contra o mesmo banco, e ajustando conforme necessário).
+
+A recuperação de senha usa uma tabela nova; em um banco de produção já existente, crie-a antes de subir esta versão:
+
+```sql
+CREATE TABLE codigos_recuperacao_senha (
+    id           BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    email        VARCHAR(120) NOT NULL,
+    codigo_hash  VARCHAR(255) NOT NULL,
+    expira_em    DATETIME(6)  NOT NULL,
+    tentativas   INT          NOT NULL,
+    usado        BIT(1)       NOT NULL,
+    data_criacao DATETIME(6)  NOT NULL,
+    INDEX idx_codigo_recuperacao_email (email)
+);
+```
 
 ## Solução de problemas comuns (Windows)
 
