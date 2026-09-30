@@ -30,6 +30,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
+import com.app.fisiotech.common.dto.PageResponse;
+import com.app.fisiotech.common.dto.PageRequestFactory;
 
 @RestController
 @RequestMapping("/me")
@@ -77,6 +80,20 @@ public class MeController {
                 .toList();
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/profissionais/paginado")
+    public ResponseEntity<PageResponse<ProfissionalPublicoResponse>> buscarProfissionaisPaginado(
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) String especialidade,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "nome") String sort,
+            @RequestParam(defaultValue = "asc") String direction) {
+        var pageable = PageRequestFactory.create(page, size, sort, direction,
+                Set.of("id", "nome", "especialidade", "valorConsultaParticular"));
+        return ResponseEntity.ok(PageResponse.from(profissionalService.buscarPaginado(nome, especialidade, pageable),
+                ProfissionalPublicoResponse::fromEntity));
     }
 
     @GetMapping("/profissionais/{id}")
