@@ -1,5 +1,7 @@
 # FisioTech — Backend
 
+[![CI](https://github.com/gabrielneriqa/fisiotech-back/actions/workflows/ci.yml/badge.svg)](https://github.com/gabrielneriqa/fisiotech-back/actions/workflows/ci.yml)
+
 API REST para um sistema de gestão de clínica de fisioterapia. Permite que um **administrador** cadastre **profissionais**, que cada profissional gerencie seus próprios **pacientes**, **consultas**, **mensagens** e **avaliações**, e que o próprio **paciente** acompanhe seu tratamento e converse com o profissional através de uma área de autoatendimento (`/me`).
 
 Este documento cobre tudo que é necessário para clonar o projeto em qualquer máquina, rodá-lo localmente e testá-lo via HTTP (curl/Postman) ou junto com o front-end ([FisioTech-front](https://github.com/gabrielneriqa/fisiotech-front)).
@@ -30,7 +32,7 @@ cd fisiotech-back
 
 O projeto tem dois profiles Spring relevantes para rodar localmente:
 
-- **default** (`application.properties`): só define o nome da aplicação. Sozinho, sem um profile adicional, a aplicação sobe mas **não tem usuário admin nem H2 console habilitados** — normalmente você vai querer combiná-lo com o profile `dev`.
+- **default** (`application.properties`): configurações comuns. Use `dev` localmente ou `prod` em produção; sem um deles é necessário fornecer também as propriedades de admin e chaves RSA.
 - **dev** (`application-dev.properties`): habilita o console do H2, o `show-sql` e cria automaticamente um usuário **admin** com credenciais fixas (`admin@fisiotech.com` / `12345678`) — é o profile recomendado para desenvolvimento e testes locais.
 
 Para rodar em modo dev (banco H2 em memória, sem precisar de nenhum banco externo), o jeito mais rápido é usar o script incluído no repositório:
@@ -86,6 +88,10 @@ Se você mudar a porta, lembre de ajustar também o `proxy.conf.js` do front-end
 ./mvnw test
 ```
 
+### Integração contínua
+
+Todo push e pull request para `master` dispara o workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) no GitHub Actions, que instala o JDK 21 e roda `./mvnw verify` (compila, executa os testes e empacota o jar). Não é preciso nenhum segredo nem banco externo: os testes usam o H2 em memória. Se algum teste falhar, os relatórios do Surefire ficam disponíveis como artefato da execução.
+
 ## Console do H2 (modo dev)
 
 Com o profile `dev` ativo, o console web do H2 fica disponível em:
@@ -103,11 +109,11 @@ Com a aplicação rodando, a documentação OpenAPI/Swagger fica disponível em:
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - JSON da spec: `http://localhost:8080/v3/api-docs`
 
-Esses dois caminhos, assim como `/h2-console/**`, `POST /pacientes/cadastro` e os dois endpoints de [recuperação de senha](#recuperação-de-senha-esqueci-minha-senha), são liberados sem autenticação; todo o resto da API exige HTTP Basic Auth.
+Os caminhos do Swagger são públicos; `/h2-console/**` é liberado apenas em `dev` sem `prod`; as rotas protegidas exigem JWT Bearer. Login, renovação, logout, cadastro de pacientes e os dois endpoints de [recuperação de senha](#recuperação-de-senha-esqueci-minha-senha) são públicos nos métodos definidos pela API.
 
 ## Autenticação e papéis
 
-A API usa **HTTP Basic Auth** (usuário = email, senha = senha cadastrada) e tem três papéis:
+A API usa **JWT Bearer**. Faça `POST /auth/login` com email e senha e envie o `accessToken` em `Authorization: Bearer <token>`. HTTP Basic deixou de ser aceito. O fluxo completo, renovação, revogação e implantação estão em [Autenticação JWT](docs/autenticacao-jwt.md). A API tem três papéis:
 
 | Papel | Prefixo de rotas protegidas | Quem gerencia |
 |---|---|---|
@@ -131,25 +137,37 @@ Em produção (profile `prod`), o admin é criado a partir das variáveis de amb
 Vale para os três papéis (profissional, admin e paciente) e funciona em duas etapas, ambas **sem autenticação**:
 
 1. `POST /auth/recuperar-senha` com `{"email": "..."}` — gera um código de **6 dígitos**, válido por **15 minutos**, e envia por email. Responde **sempre 204**, exista ou não a conta (para não revelar quem tem cadastro). Pedir de novo invalida o código anterior.
-2. `POST /auth/redefinir-senha` com `{"email": "...", "codigo": "123456", "novaSenha": "..."}` — troca a senha e responde 204. Qualquer problema (código errado, expirado, já usado ou mais de **5 tentativas**) responde o mesmo **400** `"Código inválido ou expirado."`; nesse caso, peça um código novo.
+2. `POST /auth/redefinir-senha` com `{"email": "...", "codigo": "123456", "novaSenha": "..."}` — troca a senha, encerra todas as sessões JWT abertas da conta (como na troca de senha logado) e responde 204. Qualquer problema (código errado, expirado, já usado ou mais de **5 tentativas**) responde o mesmo **400** `"Código inválido ou expirado."`; nesse caso, peça um código novo.
 
 No profile `dev` nenhum email é enviado: o código aparece no log da aplicação, numa linha `[DEV] Código de recuperação de senha para ...`.
 
 ```bash
-curl -X POST http://localhost:8080/auth/recuperar-senha   -H "Content-Type: application/json"   -d '{"email": "joao@paciente.com"}'
+curl -X POST http://localhost:8080/auth/recuperar-senha \
+  -H "Content-Type: application/json" \
+  -d '{"email": "joao@paciente.com"}'
 
 # pegue o código no log e:
-curl -X POST http://localhost:8080/auth/redefinir-senha   -H "Content-Type: application/json"   -d '{"email": "joao@paciente.com", "codigo": "123456", "novaSenha": "outraSenha123"}'
+curl -X POST http://localhost:8080/auth/redefinir-senha \
+  -H "Content-Type: application/json" \
+  -d '{"email": "joao@paciente.com", "codigo": "123456", "novaSenha": "outraSenha123"}'
 ```
 
 ## Testando a API do zero (fluxo completo via curl)
 
 Com a aplicação rodando em modo `dev` (`http://localhost:8080`), este é o caminho completo para popular dados e testar as três camadas de autenticação — incluindo o autocadastro de paciente, a busca/agendamento de consulta pelo próprio paciente e a troca de mensagens (que **exige uma consulta marcada entre as partes**, veja [Autenticação e papéis](#autenticação-e-papéis)).
 
+Os exemplos abaixo usam Bash, curl e **jq**. Primeiro obtenha o token do administrador:
+
+```bash
+ADMIN_TOKEN=$(curl -fsS http://localhost:8080/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@fisiotech.com","senha":"12345678"}' | jq -r .accessToken)
+```
+
 **1. Admin cria um profissional:**
 
 ```bash
-curl -u admin@fisiotech.com:12345678 -X POST http://localhost:8080/profissionais \
+curl -H "Authorization: Bearer $ADMIN_TOKEN" -X POST http://localhost:8080/profissionais \
   -H "Content-Type: application/json" \
   -d '{
     "nome": "Ana Souza",
@@ -162,10 +180,16 @@ curl -u admin@fisiotech.com:12345678 -X POST http://localhost:8080/profissionais
   }'
 ```
 
-**2. Confirma o login do profissional:**
+**2. Faz login e confirma a identidade do profissional:**
 
 ```bash
-curl -u ana@fisiotech.com:senha123 http://localhost:8080/auth/me
+PROFISSIONAL_TOKEN=$(curl -fsS http://localhost:8080/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"ana@fisiotech.com","senha":"senha123"}' | jq -r .accessToken)
+```
+
+```bash
+curl -H "Authorization: Bearer $PROFISSIONAL_TOKEN" http://localhost:8080/auth/me
 ```
 
 **3. Paciente se autocadastra (rota pública, sem autenticação — ainda não tem nenhum profissional vinculado):**
@@ -180,18 +204,26 @@ curl -X POST http://localhost:8080/pacientes/cadastro \
   }'
 ```
 
+Faça login com a conta recém-criada:
+
+```bash
+PACIENTE_TOKEN=$(curl -fsS http://localhost:8080/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"joao@paciente.com","senha":"senha123"}' | jq -r .accessToken)
+```
+
 **4. Paciente confirma o login, busca profissionais disponíveis e consulta a disponibilidade de horários (use o `id` retornado no passo 1, normalmente `1`):**
 
 ```bash
-curl -u joao@paciente.com:senha123 http://localhost:8080/auth/me
-curl -u joao@paciente.com:senha123 "http://localhost:8080/me/profissionais?especialidade=Ortopedia"
-curl -u joao@paciente.com:senha123 "http://localhost:8080/me/profissionais/1/disponibilidade?data=2026-08-20"
+curl -H "Authorization: Bearer $PACIENTE_TOKEN" http://localhost:8080/auth/me
+curl -H "Authorization: Bearer $PACIENTE_TOKEN" "http://localhost:8080/me/profissionais?especialidade=Ortopedia"
+curl -H "Authorization: Bearer $PACIENTE_TOKEN" "http://localhost:8080/me/profissionais/1/disponibilidade?data=2026-08-20"
 ```
 
 **5. Paciente marca uma consulta (isso vincula automaticamente esse profissional como responsável, já que é a primeira consulta do paciente):**
 
 ```bash
-curl -u joao@paciente.com:senha123 -X POST http://localhost:8080/me/consultas \
+curl -H "Authorization: Bearer $PACIENTE_TOKEN" -X POST http://localhost:8080/me/consultas \
   -H "Content-Type: application/json" \
   -d '{
     "profissionalId": 1,
@@ -204,8 +236,8 @@ curl -u joao@paciente.com:senha123 -X POST http://localhost:8080/me/consultas \
 **6. Profissional confere que o paciente aparece na sua lista (use o `id` do paciente retornado no passo 3, normalmente `1`) e envia uma mensagem — agora funciona, pois já existe uma consulta entre os dois:**
 
 ```bash
-curl -u ana@fisiotech.com:senha123 http://localhost:8080/pacientes
-curl -u ana@fisiotech.com:senha123 -X POST http://localhost:8080/mensagens \
+curl -H "Authorization: Bearer $PROFISSIONAL_TOKEN" http://localhost:8080/pacientes
+curl -H "Authorization: Bearer $PROFISSIONAL_TOKEN" -X POST http://localhost:8080/mensagens \
   -H "Content-Type: application/json" \
   -d '{"pacienteId": 1, "autor": "PROFISSIONAL", "conteudo": "Oi Joao, como vai o tratamento?"}'
 ```
@@ -213,14 +245,14 @@ curl -u ana@fisiotech.com:senha123 -X POST http://localhost:8080/mensagens \
 **7. Paciente lista suas conversas e lê a mensagem (use o `id` do profissional, normalmente `1`):**
 
 ```bash
-curl -u joao@paciente.com:senha123 http://localhost:8080/me/mensagens/caixa-entrada
-curl -u joao@paciente.com:senha123 http://localhost:8080/me/mensagens/1
+curl -H "Authorization: Bearer $PACIENTE_TOKEN" http://localhost:8080/me/mensagens/caixa-entrada
+curl -H "Authorization: Bearer $PACIENTE_TOKEN" http://localhost:8080/me/mensagens/1
 ```
 
 **8. Paciente responde:**
 
 ```bash
-curl -u joao@paciente.com:senha123 -X POST http://localhost:8080/me/mensagens/1 \
+curl -H "Authorization: Bearer $PACIENTE_TOKEN" -X POST http://localhost:8080/me/mensagens/1 \
   -H "Content-Type: application/json" \
   -d '{"conteudo": "Oi Ana, tudo certo!"}'
 ```
@@ -228,18 +260,18 @@ curl -u joao@paciente.com:senha123 -X POST http://localhost:8080/me/mensagens/1 
 **9. Profissional confere a conversa completa e a caixa de entrada unificada:**
 
 ```bash
-curl -u ana@fisiotech.com:senha123 "http://localhost:8080/mensagens?pacienteId=1"
-curl -u ana@fisiotech.com:senha123 http://localhost:8080/mensagens/caixa-entrada
+curl -H "Authorization: Bearer $PROFISSIONAL_TOKEN" "http://localhost:8080/mensagens?pacienteId=1"
+curl -H "Authorization: Bearer $PROFISSIONAL_TOKEN" http://localhost:8080/mensagens/caixa-entrada
 ```
 
 **10. Paciente remarca a consulta e depois troca a senha:**
 
 ```bash
-curl -u joao@paciente.com:senha123 -X PUT http://localhost:8080/me/consultas/1/remarcar \
+curl -H "Authorization: Bearer $PACIENTE_TOKEN" -X PUT http://localhost:8080/me/consultas/1/remarcar \
   -H "Content-Type: application/json" \
   -d '{"novaDataHora": "2026-08-21T10:00:00"}'
 
-curl -u joao@paciente.com:senha123 -X PUT http://localhost:8080/me/senha \
+curl -H "Authorization: Bearer $PACIENTE_TOKEN" -X PUT http://localhost:8080/me/senha \
   -H "Content-Type: application/json" \
   -d '{"senhaAtual": "senha123", "novaSenha": "novaSenha123"}'
 ```
@@ -268,13 +300,15 @@ Cada pacote de domínio segue o padrão `controller` → `service` → `reposito
 
 ## Deploy em produção (profile `prod`)
 
-O profile `prod` (`application-prod.properties`) espera as seguintes variáveis de ambiente:
+Antes da primeira implantação JWT, execute a auditoria e a migração SQL descritas em [Autenticação JWT](docs/autenticacao-jwt.md). O profile `prod` (`application-prod.properties`) espera as seguintes variáveis de ambiente:
 
 | Variável | Descrição |
 |---|---|
 | `DB_URL` | URL JDBC do MySQL, ex: `jdbc:mysql://host:3306/fisiotech` |
 | `DB_USERNAME` | Usuário do MySQL |
 | `DB_PASSWORD` | Senha do MySQL |
+| `JWT_PUBLIC_KEY` | URI do arquivo PEM público, por exemplo `file:/etc/fisiotech/jwt-public.pem` |
+| `JWT_PRIVATE_KEY` | URI do arquivo PEM privado PKCS#8 |
 | `ADMIN_NOME` | Nome do usuário admin a ser criado na primeira subida |
 | `ADMIN_EMAIL` | Email do admin |
 | `ADMIN_SENHA` | Senha do admin (mínimo 8 caracteres) |

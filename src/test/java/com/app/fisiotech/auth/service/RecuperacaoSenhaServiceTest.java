@@ -57,13 +57,16 @@ class RecuperacaoSenhaServiceTest {
     @Mock
     private EnvioCodigoRecuperacaoService envioCodigo;
 
+    @Mock
+    private AccountSecurityService accountSecurity;
+
     private RecuperacaoSenhaService service;
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(AGORA.atZone(ZONA).toInstant(), ZONA);
         service = new RecuperacaoSenhaService(codigoRepository, profissionalRepository, adminRepository,
-                pacienteRepository, passwordEncoder, envioCodigo, clock, 15);
+                pacienteRepository, passwordEncoder, envioCodigo, accountSecurity, clock, 15);
     }
 
     private CodigoRecuperacaoSenha codigoCriadoHa(long minutos) {
@@ -131,6 +134,7 @@ class RecuperacaoSenhaServiceTest {
 
         assertThat(paciente.getSenha()).isEqualTo("novaSenhaHash");
         assertThat(codigo.isUsado()).isTrue();
+        verify(accountSecurity).revoke("PACIENTE", paciente.getId());
     }
 
     @Test
@@ -145,6 +149,7 @@ class RecuperacaoSenhaServiceTest {
         service.redefinirSenha(redefinir("123456"));
 
         assertThat(profissional.getSenha()).isEqualTo("novaSenhaHash");
+        verify(accountSecurity).revoke("PROFISSIONAL", profissional.getId());
         verify(adminRepository, never()).findByEmail(any());
         verify(pacienteRepository, never()).findByEmail(any());
     }
@@ -161,6 +166,7 @@ class RecuperacaoSenhaServiceTest {
         service.redefinirSenha(redefinir("123456"));
 
         assertThat(admin.getSenha()).isEqualTo("novaSenhaHash");
+        verify(accountSecurity).revoke("ADMIN", admin.getId());
     }
 
     @Test
@@ -182,6 +188,7 @@ class RecuperacaoSenhaServiceTest {
 
         assertThat(codigo.getTentativas()).isEqualTo(1);
         verify(passwordEncoder, never()).encode(any());
+        verifyNoInteractions(accountSecurity);
     }
 
     @Test

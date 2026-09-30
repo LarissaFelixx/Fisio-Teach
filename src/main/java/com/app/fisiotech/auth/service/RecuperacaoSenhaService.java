@@ -29,6 +29,7 @@ public class RecuperacaoSenhaService {
     private final PacienteRepository pacienteRepository;
     private final PasswordEncoder passwordEncoder;
     private final EnvioCodigoRecuperacaoService envioCodigo;
+    private final AccountSecurityService accountSecurity;
     private final Clock clock;
     private final long validadeMinutos;
     private final SecureRandom random = new SecureRandom();
@@ -40,6 +41,7 @@ public class RecuperacaoSenhaService {
             PacienteRepository pacienteRepository,
             PasswordEncoder passwordEncoder,
             EnvioCodigoRecuperacaoService envioCodigo,
+            AccountSecurityService accountSecurity,
             Clock clock,
             @Value("${app.recuperacao-senha.validade-minutos:15}") long validadeMinutos
     ) {
@@ -49,6 +51,7 @@ public class RecuperacaoSenhaService {
         this.pacienteRepository = pacienteRepository;
         this.passwordEncoder = passwordEncoder;
         this.envioCodigo = envioCodigo;
+        this.accountSecurity = accountSecurity;
         this.clock = clock;
         this.validadeMinutos = validadeMinutos;
     }
@@ -123,21 +126,26 @@ public class RecuperacaoSenhaService {
     }
 
     private boolean atualizarSenhaDoUsuario(String email, String novaSenhaHash) {
+        // Como na troca de senha logado, a redefinição derruba todas as sessões JWT da conta:
+        // se a senha vazou, quem estava usando a conta perde o acesso na hora.
         var profissional = profissionalRepository.findByEmail(email);
         if (profissional.isPresent()) {
             profissional.get().setSenha(novaSenhaHash);
+            accountSecurity.revoke("PROFISSIONAL", profissional.get().getId());
             return true;
         }
 
         var admin = adminRepository.findByEmail(email);
         if (admin.isPresent()) {
             admin.get().setSenha(novaSenhaHash);
+            accountSecurity.revoke("ADMIN", admin.get().getId());
             return true;
         }
 
         var paciente = pacienteRepository.findByEmail(email);
         if (paciente.isPresent()) {
             paciente.get().setSenha(novaSenhaHash);
+            accountSecurity.revoke("PACIENTE", paciente.get().getId());
             return true;
         }
 

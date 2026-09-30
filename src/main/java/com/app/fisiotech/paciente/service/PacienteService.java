@@ -1,5 +1,7 @@
 package com.app.fisiotech.paciente.service;
 
+import com.app.fisiotech.auth.service.AccountSecurityService;
+
 import com.app.fisiotech.exception.EmailJaCadastradoException;
 import com.app.fisiotech.exception.RecursoNaoEncontradoException;
 import com.app.fisiotech.auth.dto.AlterarSenhaRequest;
@@ -29,6 +31,7 @@ public class PacienteService {
     private final PacienteRepository pacienteRepository;
     private final ProfissionalRepository profissionalRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AccountSecurityService accountSecurity;
 
     @Transactional
     public Paciente criar(PacienteCreateRequest request, Long profissionalId) {
@@ -49,7 +52,9 @@ public class PacienteService {
                 profissional
         );
 
-        return pacienteRepository.save(paciente);
+        pacienteRepository.save(paciente);
+        accountSecurity.registerEmail("PACIENTE", paciente.getId(), paciente.getEmail());
+        return paciente;
     }
 
 
@@ -70,7 +75,9 @@ public class PacienteService {
                 null
         );
 
-        return pacienteRepository.save(paciente);
+        pacienteRepository.save(paciente);
+        accountSecurity.registerEmail("PACIENTE", paciente.getId(), paciente.getEmail());
+        return paciente;
     }
 
 
@@ -103,6 +110,7 @@ public class PacienteService {
     @Transactional
     public void deletar(Long id, Long profissionalId){
         Paciente pacienteASerDeletado = buscarPorId(id, profissionalId);
+        accountSecurity.deleteAccount("PACIENTE", pacienteASerDeletado.getId());
         pacienteRepository.delete(pacienteASerDeletado);
     }
 
@@ -133,7 +141,9 @@ public class PacienteService {
         paciente.setBairro(request.bairro());
         paciente.setFoto(request.foto());
 
-        return pacienteRepository.save(paciente);
+        pacienteRepository.save(paciente);
+        accountSecurity.registerEmail("PACIENTE", paciente.getId(), paciente.getEmail());
+        return paciente;
     }
 
 
@@ -146,6 +156,7 @@ public class PacienteService {
         }
 
         paciente.setSenha(passwordEncoder.encode(request.novaSenha()));
+        accountSecurity.revoke("PACIENTE", paciente.getId());
         pacienteRepository.save(paciente);
     }
 
@@ -161,6 +172,7 @@ public class PacienteService {
         paciente.setEmail(emailNormalizado);
         if (request.senha() != null && !request.senha().isBlank()) {
             paciente.setSenha(passwordEncoder.encode(request.senha()));
+            accountSecurity.revoke("PACIENTE", paciente.getId());
         }
         paciente.setDataNascimento(request.dataNascimento());
         paciente.setSexo(request.sexo());
@@ -170,7 +182,9 @@ public class PacienteService {
         paciente.setBairro(request.bairro());
         paciente.setFoto(request.foto());
 
-        return pacienteRepository.save(paciente);
+        pacienteRepository.save(paciente);
+        accountSecurity.registerEmail("PACIENTE", paciente.getId(), paciente.getEmail());
+        return paciente;
     }
 
 
@@ -204,9 +218,12 @@ public class PacienteService {
 
         if (request.senha() != null && !request.senha().isBlank()) {
             paciente.setSenha(passwordEncoder.encode(request.senha()));
+            accountSecurity.revoke("PACIENTE", paciente.getId());
         }
 
-        return pacienteRepository.save(paciente);
+        pacienteRepository.save(paciente);
+        accountSecurity.registerEmail("PACIENTE", paciente.getId(), paciente.getEmail());
+        return paciente;
     }
 
 

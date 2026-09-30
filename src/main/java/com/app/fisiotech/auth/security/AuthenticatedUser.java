@@ -11,6 +11,9 @@ import java.util.List;
 @Getter
 public class AuthenticatedUser implements UserDetails {
 
+    public String role() { return authorities.iterator().next().getAuthority(); }
+    public String subject() { return role().substring("ROLE_".length()) + ":" + id; }
+
     private final Long id;
     private final String nome;
     private final String email;

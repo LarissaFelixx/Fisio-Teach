@@ -1,5 +1,7 @@
 package com.app.fisiotech.profissional.service;
 
+import com.app.fisiotech.auth.service.AccountSecurityService;
+
 import com.app.fisiotech.auth.dto.AlterarSenhaRequest;
 import com.app.fisiotech.exception.EmailJaCadastradoException;
 import com.app.fisiotech.exception.RecursoNaoEncontradoException;
@@ -24,6 +26,7 @@ public class ProfissionalService {
 
     private final ProfissionalRepository profissionalRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AccountSecurityService accountSecurity;
 
     @Transactional
     public Profissional criar(ProfissionalCreateRequest request) {
@@ -54,7 +57,9 @@ public class ProfissionalService {
         profissional.setSexo(request.sexo());
         profissional.setTelefone(request.telefone());
 
-        return profissionalRepository.save(profissional);
+        profissionalRepository.save(profissional);
+        accountSecurity.registerEmail("PROFISSIONAL", profissional.getId(), profissional.getEmail());
+        return profissional;
     }
 
 
@@ -89,6 +94,7 @@ public class ProfissionalService {
         profissionalASerAtualizado.setEmail(emailNormalizado);
         if (request.senha() != null && !request.senha().isBlank()) {
             profissionalASerAtualizado.setSenha(passwordEncoder.encode(request.senha()));
+            accountSecurity.revoke("PROFISSIONAL", profissionalASerAtualizado.getId());
         }
         profissionalASerAtualizado.setRegistroProfissional(request.registroProfissional().trim());
         profissionalASerAtualizado.setEspecialidade(request.especialidade().trim());
@@ -99,7 +105,9 @@ public class ProfissionalService {
         profissionalASerAtualizado.setSexo(request.sexo());
         profissionalASerAtualizado.setTelefone(request.telefone());
 
-        return profissionalRepository.save(profissionalASerAtualizado);
+        profissionalRepository.save(profissionalASerAtualizado);
+        accountSecurity.registerEmail("PROFISSIONAL", profissionalASerAtualizado.getId(), profissionalASerAtualizado.getEmail());
+        return profissionalASerAtualizado;
     }
 
 
@@ -124,6 +132,7 @@ public class ProfissionalService {
         }
 
         profissional.setSenha(passwordEncoder.encode(request.novaSenha()));
+        accountSecurity.revoke("PROFISSIONAL", profissional.getId());
         profissionalRepository.save(profissional);
     }
 
@@ -131,6 +140,7 @@ public class ProfissionalService {
     @Transactional
     public void deletar(Long id) {
         Profissional profissionalASerDeletado = buscarPorId(id);
+        accountSecurity.deleteAccount("PROFISSIONAL", profissionalASerDeletado.getId());
         profissionalRepository.delete(profissionalASerDeletado);
     }
 

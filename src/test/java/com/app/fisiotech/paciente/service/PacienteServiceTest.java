@@ -37,6 +37,9 @@ class PacienteServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private com.app.fisiotech.auth.service.AccountSecurityService accountSecurity;
+
     @InjectMocks
     private PacienteService pacienteService;
 

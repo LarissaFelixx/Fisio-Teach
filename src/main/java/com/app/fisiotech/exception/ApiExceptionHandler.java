@@ -13,6 +13,17 @@ import java.util.Map;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthentication(org.springframework.security.core.AuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(criarCorpoErro(HttpStatus.UNAUTHORIZED, "Credenciais ou sessão inválidas."));
+    }
+
+    @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(org.springframework.web.bind.MethodArgumentNotValidException ex) {
+        return ResponseEntity.badRequest().body(criarCorpoErro(HttpStatus.BAD_REQUEST, "Dados da requisição inválidos."));
+    }
+
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     public ResponseEntity<Map<String, Object>> handleRecursoNaoEncontrado(RecursoNaoEncontradoException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
