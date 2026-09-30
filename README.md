@@ -7,7 +7,8 @@ Este documento cobre tudo que é necessário para clonar o projeto em qualquer m
 ## Stack
 
 - **Java 21**
-- **Spring Boot 4.0.5** (Web MVC, Data JPA, Security, Validation)
+- **Spring Boot 4.0.5** (Web MVC, Data JPA, Security, Validation, Mail e Actuator)
+- **Flyway** (migrações versionadas do banco)
 - **Maven** (usa o wrapper `mvnw`/`mvnw.cmd`, não é necessário ter o Maven instalado)
 - **H2** (banco em memória, usado em desenvolvimento)
 - **MySQL** (banco relacional, usado em produção via `mysql-connector-j`)
@@ -85,6 +86,8 @@ Se você mudar a porta, lembre de ajustar também o `proxy.conf.js` do front-end
 ```bash
 ./mvnw test
 ```
+
+O pipeline em `.github/workflows/ci.yml` executa build, testes e validação das migrações em MySQL 8 a cada push e pull request.
 
 ## Console do H2 (modo dev)
 
@@ -262,6 +265,13 @@ curl -H "Authorization: Bearer $PACIENTE_TOKEN" -X PUT http://localhost:8080/me/
 
 Para os demais recursos (`/consultas`, `/avaliacoes`, `/admin/pacientes`) e os corpos de requisição exatos de cada endpoint, consulte o Swagger UI — ele reflete sempre o estado atual do código.
 
+## Funcionalidades da sprint
+
+- **Prontuário:** `/prontuario/pacientes/{id}/evolucoes` mantém registros imutáveis de evolução; `/prontuario/pacientes/{id}/planos` cria revisões do plano terapêutico. O paciente consulta o próprio histórico por `/me/prontuario`.
+- **Agenda:** `/agenda` aceita período, paciente, status e tipo. `/agenda/indicadores` consolida total de consultas, pacientes atendidos, taxa de cancelamento e distribuição por status.
+- **Paginação:** as rotas `/pacientes/paginado`, `/admin/pacientes/paginado`, `/profissionais/paginado` e `/me/profissionais/paginado` recebem `page`, `size`, `sort` e `direction`; `size` é limitado a 100.
+- **Recuperação de senha:** o fluxo público usa token temporário, de uso único, enviado por e-mail quando SMTP está habilitado.
+
 ## Estrutura do projeto
 
 Organização por *domínio/feature* (não por camada técnica) dentro de `src/main/java/com/app/fisiotech`:
@@ -295,7 +305,9 @@ Antes da primeira implantação JWT, execute a auditoria e a migração SQL desc
 | `ADMIN_EMAIL` | Email do admin |
 | `ADMIN_SENHA` | Senha do admin (mínimo 8 caracteres) |
 
-Em produção o schema é validado (`ddl-auto=validate`), não gerado automaticamente — garanta que o schema MySQL já exista com as tabelas corretas antes de subir a aplicação (ou gere-o rodando a aplicação uma vez fora do profile `prod`, contra o mesmo banco, e ajustando conforme necessário).
+Em produção e homologação, o Flyway aplica as migrações pendentes antes de o Hibernate validar o schema (`ddl-auto=validate`). Para homologação em contêiner e integração com o APK, consulte [Homologação e APK](docs/homologacao-apk.md).
+
+A evidência consolidada das atividades, validações e limites da entrega está em [Entrega da sprint](docs/entrega-sprint.md).
 
 ## Solução de problemas comuns (Windows)
 
