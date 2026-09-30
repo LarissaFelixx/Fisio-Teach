@@ -9,7 +9,7 @@
 | Consultas | agendamento, conflito, atualização, cancelamento e isolamento | Unitário; integração pendente |
 | Mensagens | envio, conversa, caixa de entrada e vínculo por consulta | Unitário; integração pendente |
 | Avaliações | consulta realizada, duplicidade e isolamento | Unitário; integração pendente |
-| Recuperação de senha | solicitação, expiração, consumo e revogação | Pendente da funcionalidade |
+| Recuperação de senha | resposta neutra, limite, consumo e revogação | Automatizado |
 | Prontuário | evolução, plano terapêutico, histórico e acesso | Pendente da funcionalidade |
 | Agenda e indicadores | período, conflito e consolidação | Pendente da funcionalidade |
 | Paginação | limites, filtros, ordenação e isolamento | Pendente da funcionalidade |

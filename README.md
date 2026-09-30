@@ -107,6 +107,14 @@ Os caminhos do Swagger são públicos; `/h2-console/**` é liberado apenas em `d
 
 ## Autenticação e papéis
 
+### Recuperação de senha
+
+`POST /auth/forgot-password` recebe `{"email":"usuario@exemplo.com"}` e sempre
+retorna uma resposta neutra. `POST /auth/reset-password` recebe o token enviado por
+email e a nova senha. O token expira em 15 minutos, é de uso único e a redefinição
+revoga todas as sessões existentes. Configure SMTP com as propriedades padrão
+`spring.mail.*`, `MAIL_ENABLED=true`, `MAIL_FROM` e `PASSWORD_RECOVERY_URL`.
+
 A API usa **JWT Bearer**. Faça `POST /auth/login` com email e senha e envie o `accessToken` em `Authorization: Bearer <token>`. HTTP Basic deixou de ser aceito. O fluxo completo, renovação, revogação e implantação estão em [Autenticação JWT](docs/autenticacao-jwt.md). A API tem três papéis:
 
 | Papel | Prefixo de rotas protegidas | Quem gerencia |

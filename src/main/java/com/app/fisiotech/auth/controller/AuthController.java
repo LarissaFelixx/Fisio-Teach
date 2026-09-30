@@ -16,6 +16,22 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
+    private final com.app.fisiotech.auth.service.PasswordRecoveryService passwordRecoveryService;
+
+    @PostMapping("/forgot-password")
+    @SecurityRequirements
+    public ResponseEntity<java.util.Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordRecoveryService.request(request.email());
+        return ResponseEntity.accepted().body(java.util.Map.of("message",
+                "Se o email estiver cadastrado, as instruções serão enviadas."));
+    }
+
+    @PostMapping("/reset-password")
+    @SecurityRequirements
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordRecoveryService.reset(request.token(), request.novaSenha());
+        return ResponseEntity.noContent().build();
+    }
 
     @PostMapping("/login")
     @SecurityRequirements

@@ -38,7 +38,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/h2-console/**").access((authentication, context) -> new AuthorizationDecision(environment.matchesProfiles("dev & !prod")))
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/pacientes/cadastro", "/auth/login", "/auth/refresh", "/auth/logout").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/pacientes/cadastro", "/auth/login", "/auth/refresh", "/auth/logout",
+                                "/auth/forgot-password", "/auth/reset-password").permitAll()
                         .requestMatchers("/profissionais/me/**").hasRole("PROFISSIONAL")
                         .requestMatchers("/profissionais/**", "/admin/pacientes/**", "/admin/me/**").hasRole("ADMIN")
                         .requestMatchers("/pacientes/**", "/consultas/**", "/mensagens/**", "/avaliacoes/**").hasRole("PROFISSIONAL")

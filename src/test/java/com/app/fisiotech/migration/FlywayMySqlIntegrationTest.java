@@ -15,7 +15,7 @@ class FlywayMySqlIntegrationTest {
                         System.getenv("MYSQL_TEST_PASSWORD"))
                 .cleanDisabled(false).load();
         flyway.clean();
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(2);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(3);
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
     }
