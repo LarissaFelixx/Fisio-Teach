@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import com.app.fisiotech.auth.service.AuthService;
 import com.app.fisiotech.auth.security.AppUserDetailsService;
 import org.springframework.core.env.Environment;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -37,7 +38,7 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/h2-console/**").access((authentication, context) -> new AuthorizationDecision(environment.matchesProfiles("dev & !prod")))
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers(HttpMethod.POST, "/pacientes/cadastro", "/auth/login", "/auth/refresh", "/auth/logout",
                                 "/auth/forgot-password", "/auth/reset-password").permitAll()
                         .requestMatchers("/profissionais/me/**").hasRole("PROFISSIONAL")
@@ -87,15 +88,11 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${app.cors.allowed-origins:http://localhost,https://localhost,capacitor://localhost,http://localhost:4200}") List<String> origins) {
         CorsConfiguration configuration = new CorsConfiguration();
         // Origens do app empacotado com Capacitor (Android/iOS) e do dev server Angular.
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost",
-                "https://localhost",
-                "capacitor://localhost",
-                "http://localhost:4200"
-        ));
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
 
