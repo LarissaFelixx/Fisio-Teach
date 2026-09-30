@@ -49,6 +49,8 @@ jobs:
           reporter: java-junit
           report-title: Relatório de testes
           badge-title: testes
+          # Um XML por classe de teste: listar os arquivos só duplicaria as suítes.
+          list-files: none
           list-suites: all
           list-tests: all
           # Quem reprova o build é o passo "Build e testes"; aqui é só relatório.
