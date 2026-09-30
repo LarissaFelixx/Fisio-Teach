@@ -42,7 +42,7 @@ public class SecurityConfig {
                                 "/auth/forgot-password", "/auth/reset-password").permitAll()
                         .requestMatchers("/profissionais/me/**").hasRole("PROFISSIONAL")
                         .requestMatchers("/profissionais/**", "/admin/pacientes/**", "/admin/me/**").hasRole("ADMIN")
-                        .requestMatchers("/pacientes/**", "/consultas/**", "/mensagens/**", "/avaliacoes/**").hasRole("PROFISSIONAL")
+                        .requestMatchers("/pacientes/**", "/consultas/**", "/mensagens/**", "/avaliacoes/**", "/prontuario/**").hasRole("PROFISSIONAL")
                         .requestMatchers("/me/**").hasRole("PACIENTE")
                         .anyRequest().authenticated()
                 )

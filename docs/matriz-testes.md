@@ -10,6 +10,6 @@
 | Mensagens | envio, conversa, caixa de entrada e vínculo por consulta | Unitário; integração pendente |
 | Avaliações | consulta realizada, duplicidade e isolamento | Unitário; integração pendente |
 | Recuperação de senha | resposta neutra, limite, consumo e revogação | Automatizado |
-| Prontuário | evolução, plano terapêutico, histórico e acesso | Pendente da funcionalidade |
+| Prontuário | evolução imutável, revisão do plano, histórico e visibilidade | Automatizado no serviço; HTTP na etapa de integração |
 | Agenda e indicadores | período, conflito e consolidação | Pendente da funcionalidade |
 | Paginação | limites, filtros, ordenação e isolamento | Pendente da funcionalidade |
