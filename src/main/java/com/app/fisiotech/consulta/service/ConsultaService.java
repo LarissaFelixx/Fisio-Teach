@@ -35,7 +35,8 @@ public class ConsultaService {
     @Transactional
     public Consulta criar(ConsultaCreateRequest request, Long profissionalId) {
         Paciente paciente = buscarPacienteDoProfissional(request.pacienteId(), profissionalId);
-        Profissional profissional = profissionalRepository.getReferenceById(profissionalId);
+        Profissional profissional = bloquearProfissional(profissionalId);
+        validarHorarioLivre(profissionalId, request.dataHora(), null);
 
         Consulta consulta = new Consulta(
                 paciente,
@@ -55,15 +56,8 @@ public class ConsultaService {
         Paciente paciente = pacienteRepository.findById(pacienteId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Paciente não encontrado."));
 
-        Profissional profissional = profissionalRepository.findById(request.profissionalId())
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Profissional não encontrado."));
-
-        boolean horarioOcupado = consultaRepository.existsByProfissionalIdAndDataHoraAndStatusNot(
-                request.profissionalId(), request.dataHora(), StatusConsulta.CANCELADA);
-
-        if (horarioOcupado) {
-            throw new HorarioIndisponivelException("Este horário não está mais disponível.");
-        }
+        Profissional profissional = bloquearProfissional(request.profissionalId());
+        validarHorarioLivre(request.profissionalId(), request.dataHora(), null);
 
         boolean particular = request.convenio() == null || request.convenio().isBlank();
         BigDecimal valor = particular ? profissional.getValorConsultaParticular() : null;
@@ -119,6 +113,8 @@ public class ConsultaService {
 
         LocalDateTime dataHoraAntes = consulta.getDataHora();
         if (!dataHoraAntes.equals(request.dataHora())) {
+            profissionalRepository.findWithLockById(profissionalId);
+            validarHorarioLivre(profissionalId, request.dataHora(), id);
             consulta.setFoiRemarcada(true);
         }
 
@@ -187,12 +183,8 @@ public class ConsultaService {
         Consulta consulta = buscarPorIdEPaciente(id, pacienteId);
         validarStatusEditavel(consulta);
 
-        boolean horarioOcupado = consultaRepository.existsByProfissionalIdAndDataHoraAndStatusNotAndIdNot(
-                consulta.getProfissional().getId(), novaDataHora, StatusConsulta.CANCELADA, id);
-
-        if (horarioOcupado) {
-            throw new HorarioIndisponivelException("Este horário não está mais disponível.");
-        }
+        profissionalRepository.findWithLockById(consulta.getProfissional().getId());
+        validarHorarioLivre(consulta.getProfissional().getId(), novaDataHora, id);
 
         consulta.setDataHora(novaDataHora);
         consulta.setFoiRemarcada(true);
@@ -216,5 +208,17 @@ public class ConsultaService {
         }
 
         return paciente;
+    }
+
+    private Profissional bloquearProfissional(Long id) {
+        return profissionalRepository.findWithLockById(id).or(() -> profissionalRepository.findById(id))
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Profissional não encontrado."));
+    }
+
+    private void validarHorarioLivre(Long profissionalId, LocalDateTime horario, Long consultaIgnorada) {
+        boolean ocupado = consultaIgnorada == null
+                ? consultaRepository.existsByProfissionalIdAndDataHoraAndStatusNot(profissionalId, horario, StatusConsulta.CANCELADA)
+                : consultaRepository.existsByProfissionalIdAndDataHoraAndStatusNotAndIdNot(profissionalId, horario, StatusConsulta.CANCELADA, consultaIgnorada);
+        if (ocupado) throw new HorarioIndisponivelException("Este horário não está mais disponível.");
     }
 }

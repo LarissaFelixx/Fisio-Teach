@@ -11,5 +11,5 @@
 | Avaliações | consulta realizada, duplicidade e isolamento | Unitário; integração pendente |
 | Recuperação de senha | resposta neutra, limite, consumo e revogação | Automatizado |
 | Prontuário | evolução imutável, revisão do plano, histórico e visibilidade | Automatizado no serviço; HTTP na etapa de integração |
-| Agenda e indicadores | período, conflito e consolidação | Pendente da funcionalidade |
+| Agenda e indicadores | período, filtros, conflito uniforme e consolidação | Automatizado no serviço; HTTP na etapa de integração |
 | Paginação | limites, filtros, ordenação e isolamento | Pendente da funcionalidade |
