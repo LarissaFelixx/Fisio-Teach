@@ -24,6 +24,7 @@ public class PacienteController {
     private final PacienteService pacienteService;
 
     @PostMapping("/cadastro")
+    @io.swagger.v3.oas.annotations.security.SecurityRequirements
     public ResponseEntity<Void> cadastrarPublico(@Valid @RequestBody PacienteCreateRequest request) {
         Paciente pacienteCriado = pacienteService.cadastrarPublico(request);
 

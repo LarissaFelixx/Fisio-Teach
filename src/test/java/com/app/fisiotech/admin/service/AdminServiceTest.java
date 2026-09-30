@@ -31,6 +31,9 @@ class AdminServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private com.app.fisiotech.auth.service.AccountSecurityService accountSecurity;
+
     @InjectMocks
     private AdminService adminService;
 
