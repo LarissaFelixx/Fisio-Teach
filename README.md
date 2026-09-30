@@ -90,7 +90,9 @@ Se você mudar a porta, lembre de ajustar também o `proxy.conf.js` do front-end
 
 ### Integração contínua
 
-Todo push e pull request para `master` dispara o workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) no GitHub Actions, que instala o JDK 21 e roda `./mvnw verify` (compila, executa os testes e empacota o jar). Não é preciso nenhum segredo nem banco externo: os testes usam o H2 em memória. Se algum teste falhar, os relatórios do Surefire ficam disponíveis como artefato da execução.
+Todo push e pull request para `master` dispara o workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) no GitHub Actions, que instala o JDK 21 e roda `./mvnw verify` (compila, executa os testes e empacota o jar). Não é preciso nenhum segredo nem banco externo: os testes usam o H2 em memória. Ao final, o passo **Relatório de testes** publica, no resumo da execução e como um check no PR, a lista de todos os testes agrupados por classe, com ✅/❌ em cada um; testes que falharem ganham uma anotação apontando a linha do erro. Os XMLs do Surefire também ficam anexados como artefato (`surefire-reports`) por 7 dias.
+
+Os testes aparecem no relatório com o nome do método em frase (`deveRecusarCodigoExpirado` vira "Deve recusar codigo expirado"), graças ao `FraseDisplayNameGenerator` registrado em `src/test/resources/junit-platform.properties`. Escreva os nomes dos métodos de teste descrevendo o comportamento esperado, em camelCase; um `@DisplayName` explícito continua tendo prioridade.
 
 ## Console do H2 (modo dev)
 
