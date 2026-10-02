@@ -9,7 +9,7 @@
 | Consultas | agendamento, conflito, atualização, cancelamento e isolamento | Unitário e fluxo HTTP principal |
 | Mensagens | envio, conversa, caixa de entrada e vínculo por consulta | Unitário; integração pendente |
 | Avaliações | consulta realizada, duplicidade e isolamento | Unitário; integração pendente |
-| Recuperação de senha | resposta neutra, limite, consumo e revogação | Automatizado |
+| Recuperação de senha | resposta neutra, código expirado, limite de 5 tentativas, uso único e revogação das sessões | Unitário e integração HTTP |
 | Prontuário | evolução imutável, revisão do plano, histórico e visibilidade | Automatizado no serviço; HTTP na etapa de integração |
 | Agenda e indicadores | período, filtros, conflito uniforme e consolidação | Serviço e integração HTTP |
 | Paginação | limites, filtros, ordenação e isolamento | Unitário e integração HTTP |
