@@ -87,7 +87,8 @@ Não há sessão HTTP/cookie de autenticação. O estado de revogação é persi
 6. No logout, chamar o servidor e limpar os tokens locais. Se estiver offline,
    limpar localmente não revoga a sessão no servidor.
 
-Login, refresh, logout e cadastro público devem sair sem um Bearer antigo. Um Bearer
+Login, refresh, logout, cadastro público e recuperação de senha (`/auth/recuperar-senha`,
+`/auth/redefinir-senha`) devem sair sem um Bearer antigo. Um Bearer
 inválido é rejeitado pelo filtro mesmo em uma rota pública. Usar HTTPS em produção.
 O frontend fica fora deste repositório e precisa ser publicado de forma coordenada.
 

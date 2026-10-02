@@ -147,6 +147,19 @@
 				</configuration>
 			</plugin>
 			<plugin>
+				<!-- Grava no XML dos relatórios os nomes em frase dos testes (FraseDisplayNameGenerator),
+				     usados pelo relatório publicado no CI. O classname fica o original para as anotações
+				     de falha continuarem apontando para o arquivo certo. -->
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter">
+						<usePhrasedTestCaseClassName>false</usePhrasedTestCaseClassName>
+						<usePhrasedTestCaseMethodName>true</usePhrasedTestCaseMethodName>
+					</statelessTestsetReporter>
+				</configuration>
+			</plugin>
+			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>

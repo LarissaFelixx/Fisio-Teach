@@ -1,5 +1,7 @@
 # FisioTech — Backend
 
+[![CI](https://github.com/gabrielneriqa/fisiotech-back/actions/workflows/ci.yml/badge.svg)](https://github.com/gabrielneriqa/fisiotech-back/actions/workflows/ci.yml)
+
 API REST para um sistema de gestão de clínica de fisioterapia. Permite que um **administrador** cadastre **profissionais**, que cada profissional gerencie seus próprios **pacientes**, **consultas**, **mensagens** e **avaliações**, e que o próprio **paciente** acompanhe seu tratamento e converse com o profissional através de uma área de autoatendimento (`/me`).
 
 Este documento cobre tudo que é necessário para clonar o projeto em qualquer máquina, rodá-lo localmente e testá-lo via HTTP (curl/Postman) ou junto com o front-end ([FisioTech-front](https://github.com/gabrielneriqa/fisiotech-front)).
@@ -87,7 +89,11 @@ Se você mudar a porta, lembre de ajustar também o `proxy.conf.js` do front-end
 ./mvnw test
 ```
 
-O pipeline em `.github/workflows/ci.yml` executa build, testes e validação das migrações em MySQL 8 a cada push e pull request.
+### Integração contínua
+
+Todo push e pull request para `main` ou `dev-marcoNoronha` dispara o workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) no GitHub Actions, que instala o JDK 21 e roda `./mvnw verify` (compila, executa os testes, valida as migrações Flyway num MySQL 8 de serviço e empacota o jar, anexado como artefato `fisiotech-backend`). Ao final, o passo **Relatório de testes** publica os totais e a lista de todos os testes agrupados por classe, com ✅/❌ e o tempo de cada um. O relatório aparece no resumo da execução, como o check "Relatório de testes" e, em pull requests, como um comentário, atualizado a cada push. Testes que falharem ganham uma anotação apontando a linha do erro. Os XMLs do Surefire também ficam anexados como artefato (`test-reports`) por 7 dias.
+
+Os testes aparecem no relatório com o nome do método em frase (`deveRecusarCodigoExpirado` vira "Deve recusar codigo expirado"), graças ao `FraseDisplayNameGenerator` registrado em `src/test/resources/junit-platform.properties`. Escreva os nomes dos métodos de teste descrevendo o comportamento esperado, em camelCase; um `@DisplayName` explícito continua tendo prioridade.
 
 ## Console do H2 (modo dev)
 
@@ -106,17 +112,9 @@ Com a aplicação rodando, a documentação OpenAPI/Swagger fica disponível em:
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - JSON da spec: `http://localhost:8080/v3/api-docs`
 
-Os caminhos do Swagger são públicos; `/h2-console/**` é liberado apenas em `dev` sem `prod`; as rotas protegidas exigem JWT Bearer. Login, renovação, logout e cadastro de pacientes são públicos nos métodos definidos pela API.
+Os caminhos do Swagger são públicos; `/h2-console/**` é liberado apenas em `dev` sem `prod`; as rotas protegidas exigem JWT Bearer. Login, renovação, logout, cadastro de pacientes e os dois endpoints de [recuperação de senha](#recuperação-de-senha-esqueci-minha-senha) são públicos nos métodos definidos pela API.
 
 ## Autenticação e papéis
-
-### Recuperação de senha
-
-`POST /auth/forgot-password` recebe `{"email":"usuario@exemplo.com"}` e sempre
-retorna uma resposta neutra. `POST /auth/reset-password` recebe o token enviado por
-email e a nova senha. O token expira em 15 minutos, é de uso único e a redefinição
-revoga todas as sessões existentes. Configure SMTP com as propriedades padrão
-`spring.mail.*`, `MAIL_ENABLED=true`, `MAIL_FROM` e `PASSWORD_RECOVERY_URL`.
 
 A API usa **JWT Bearer**. Faça `POST /auth/login` com email e senha e envie o `accessToken` em `Authorization: Bearer <token>`. HTTP Basic deixou de ser aceito. O fluxo completo, renovação, revogação e implantação estão em [Autenticação JWT](docs/autenticacao-jwt.md). A API tem três papéis:
 
@@ -136,6 +134,26 @@ senha: 12345678
 ```
 
 Em produção (profile `prod`), o admin é criado a partir das variáveis de ambiente `ADMIN_NOME`, `ADMIN_EMAIL` e `ADMIN_SENHA` (veja [Deploy em produção](#deploy-em-produção-profile-prod)) — não existe usuário admin fixo em produção.
+
+### Recuperação de senha ("esqueci minha senha")
+
+Vale para os três papéis (profissional, admin e paciente) e funciona em duas etapas, ambas **sem autenticação**:
+
+1. `POST /auth/recuperar-senha` com `{"email": "..."}` — gera um código de **6 dígitos**, válido por **15 minutos**, e envia por email. Responde **sempre 204**, exista ou não a conta (para não revelar quem tem cadastro). Pedir de novo invalida o código anterior.
+2. `POST /auth/redefinir-senha` com `{"email": "...", "codigo": "123456", "novaSenha": "..."}` — troca a senha, encerra todas as sessões JWT abertas da conta (como na troca de senha logado) e responde 204. Qualquer problema (código errado, expirado, já usado ou mais de **5 tentativas**) responde o mesmo **400** `"Código inválido ou expirado."`; nesse caso, peça um código novo.
+
+No profile `dev` nenhum email é enviado: o código aparece no log da aplicação, numa linha `[DEV] Código de recuperação de senha para ...`.
+
+```bash
+curl -X POST http://localhost:8080/auth/recuperar-senha \
+  -H "Content-Type: application/json" \
+  -d '{"email": "joao@paciente.com"}'
+
+# pegue o código no log e:
+curl -X POST http://localhost:8080/auth/redefinir-senha \
+  -H "Content-Type: application/json" \
+  -d '{"email": "joao@paciente.com", "codigo": "123456", "novaSenha": "outraSenha123"}'
+```
 
 ## Testando a API do zero (fluxo completo via curl)
 
@@ -270,7 +288,7 @@ Para os demais recursos (`/consultas`, `/avaliacoes`, `/admin/pacientes`) e os c
 - **Prontuário:** `/prontuario/pacientes/{id}/evolucoes` mantém registros imutáveis de evolução; `/prontuario/pacientes/{id}/planos` cria revisões do plano terapêutico. O paciente consulta o próprio histórico por `/me/prontuario`.
 - **Agenda:** `/agenda` aceita período, paciente, status e tipo. `/agenda/indicadores` consolida total de consultas, pacientes atendidos, taxa de cancelamento e distribuição por status.
 - **Paginação:** as rotas `/pacientes/paginado`, `/admin/pacientes/paginado`, `/profissionais/paginado` e `/me/profissionais/paginado` recebem `page`, `size`, `sort` e `direction`; `size` é limitado a 100.
-- **Recuperação de senha:** o fluxo público usa token temporário, de uso único, enviado por e-mail quando SMTP está habilitado.
+- **Recuperação de senha:** código de 6 dígitos enviado por e-mail, válido por 15 minutos e limitado a 5 tentativas; veja [Recuperação de senha](#recuperação-de-senha-esqueci-minha-senha).
 
 ## Estrutura do projeto
 
@@ -278,7 +296,7 @@ Organização por *domínio/feature* (não por camada técnica) dentro de `src/m
 
 ```
 admin/          # configuração de segurança (SecurityConfig), seed do admin
-auth/           # endpoint /auth/me, AuthenticatedUser, UserDetailsService
+auth/           # endpoint /auth/me, recuperação de senha, AuthenticatedUser, UserDetailsService
 profissional/   # entidade, controller, service, repository e DTOs do Profissional
 paciente/       # idem para Paciente
 consulta/       # idem para Consulta (com sub-objetos @Embeddable: quadro clínico, hábitos de vida, exame físico, diagnóstico)
@@ -304,10 +322,19 @@ Antes da primeira implantação JWT, execute a auditoria e a migração SQL desc
 | `ADMIN_NOME` | Nome do usuário admin a ser criado na primeira subida |
 | `ADMIN_EMAIL` | Email do admin |
 | `ADMIN_SENHA` | Senha do admin (mínimo 8 caracteres) |
+| `SPRING_MAIL_HOST` | Servidor SMTP usado para enviar o código de recuperação de senha, ex: `smtp.gmail.com` |
+| `SPRING_MAIL_PORT` | Porta do SMTP, ex: `587` (STARTTLS) |
+| `SPRING_MAIL_USERNAME` | Usuário do SMTP |
+| `SPRING_MAIL_PASSWORD` | Senha do SMTP (no Gmail, uma *senha de app*) |
+| `MAIL_REMETENTE` | Endereço que aparece como remetente do email, ex: `no-reply@seudominio.com` |
+
+Sem `SPRING_MAIL_HOST` a aplicação sobe normalmente, mas a recuperação de senha não envia nada (fica só um erro no log).
 
 Em produção e homologação, o Flyway aplica as migrações pendentes antes de o Hibernate validar o schema (`ddl-auto=validate`). Para homologação em contêiner e integração com o APK, consulte [Homologação e APK](docs/homologacao-apk.md).
 
 A evidência consolidada das atividades, validações e limites da entrega está em [Entrega da sprint](docs/entrega-sprint.md).
+
+A tabela da recuperação de senha (`codigos_recuperacao_senha`) é criada pela migração Flyway `V5`, que também remove a `password_reset_tokens` da implementação anterior por link. Em homologação, o SMTP vem de `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME` e `MAIL_PASSWORD`, e o remetente de `MAIL_FROM`.
 
 ## Solução de problemas comuns (Windows)
 

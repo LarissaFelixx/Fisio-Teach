@@ -3,6 +3,7 @@ package com.app.fisiotech.auth.controller;
 import com.app.fisiotech.auth.dto.*;
 import com.app.fisiotech.auth.security.AuthenticatedUser;
 import com.app.fisiotech.auth.service.AuthService;
+import com.app.fisiotech.auth.service.RecuperacaoSenhaService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,22 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
-    private final com.app.fisiotech.auth.service.PasswordRecoveryService passwordRecoveryService;
-
-    @PostMapping("/forgot-password")
-    @SecurityRequirements
-    public ResponseEntity<java.util.Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
-        passwordRecoveryService.request(request.email());
-        return ResponseEntity.accepted().body(java.util.Map.of("message",
-                "Se o email estiver cadastrado, as instruções serão enviadas."));
-    }
-
-    @PostMapping("/reset-password")
-    @SecurityRequirements
-    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-        passwordRecoveryService.reset(request.token(), request.novaSenha());
-        return ResponseEntity.noContent().build();
-    }
+    private final RecuperacaoSenhaService recuperacaoSenhaService;
 
     @PostMapping("/login")
     @SecurityRequirements
@@ -49,6 +35,21 @@ public class AuthController {
     @SecurityRequirements
     public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
         authService.logout(request.refreshToken());
+        return ResponseEntity.noContent().build();
+    }
+
+    // Sempre 204, exista ou não o email - ver RecuperacaoSenhaService.solicitarCodigo.
+    @PostMapping("/recuperar-senha")
+    @SecurityRequirements
+    public ResponseEntity<Void> recuperarSenha(@Valid @RequestBody RecuperarSenhaRequest request) {
+        recuperacaoSenhaService.solicitarCodigo(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/redefinir-senha")
+    @SecurityRequirements
+    public ResponseEntity<Void> redefinirSenha(@Valid @RequestBody RedefinirSenhaRequest request) {
+        recuperacaoSenhaService.redefinirSenha(request);
         return ResponseEntity.noContent().build();
     }
 
