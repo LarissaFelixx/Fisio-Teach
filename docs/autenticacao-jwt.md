@@ -87,7 +87,8 @@ Não há sessão HTTP/cookie de autenticação. O estado de revogação é persi
 6. No logout, chamar o servidor e limpar os tokens locais. Se estiver offline,
    limpar localmente não revoga a sessão no servidor.
 
-Login, refresh, logout e cadastro público devem sair sem um Bearer antigo. Um Bearer
+Login, refresh, logout, cadastro público e recuperação de senha (`/auth/recuperar-senha`,
+`/auth/redefinir-senha`) devem sair sem um Bearer antigo. Um Bearer
 inválido é rejeitado pelo filtro mesmo em uma rota pública. Usar HTTPS em produção.
 O frontend fica fora deste repositório e precisa ser publicado de forma coordenada.
 
@@ -120,13 +121,16 @@ Trocar o par invalida os JWTs existentes; não há sobreposição automática de
 
 ## Banco de produção e implantação
 
-O projeto mantém `ddl-auto=validate` e não executa esses scripts automaticamente.
+O projeto usa Flyway e mantém `ddl-auto=validate`. Em banco vazio, as migrações
+`V1` e `V2` criam o esquema completo. Em banco legado não vazio e ainda sem histórico
+do Flyway, `baseline-on-migrate` registra a estrutura existente como versão 1 e executa
+a migração JWT da versão 2.
 
 1. Fazer backup e parar as instâncias antigas antes da alteração.
 2. Executar `src/main/resources/db/manual/000-audit-emails.sql`. Resolver os emails
    duplicados retornados antes de prosseguir, sem excluir contas automaticamente.
-3. Executar uma vez `src/main/resources/db/manual/001-jwt-security.sql` no MySQL 8.
-   Ele acrescenta três tabelas e preenche o registro de emails das contas existentes.
+3. Iniciar a nova versão, que executará `src/main/resources/db/migration/V2__seguranca_jwt.sql`.
+   Ela acrescenta três tabelas e preenche o registro de emails das contas existentes.
    DDL no MySQL não é integralmente transacional: se houver erro, inspecionar as
    tabelas criadas e corrigir a causa antes de repetir qualquer etapa.
 4. Configurar as chaves e iniciar com `prod`. O Hibernate valida o esquema.

@@ -16,6 +16,8 @@ import com.app.fisiotech.profissional.entity.Profissional;
 import com.app.fisiotech.profissional.repository.ProfissionalRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -84,6 +86,16 @@ public class PacienteService {
     @Transactional(readOnly = true)
     public List<Paciente> listarTodos(Long profissionalId){
         return pacienteRepository.findByProfissionalId(profissionalId, Sort.by(Sort.Direction.ASC, "id"));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Paciente> buscarPaginado(Long profissionalId, String filtro, Pageable pageable) {
+        return pacienteRepository.buscarDoProfissional(profissionalId, normalizarFiltro(filtro), pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Paciente> buscarPaginadoAdmin(String filtro, Pageable pageable) {
+        return pacienteRepository.buscarTodos(normalizarFiltro(filtro), pageable);
     }
 
 
@@ -229,6 +241,10 @@ public class PacienteService {
 
     private String normalizarEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizarFiltro(String filtro) {
+        return filtro == null || filtro.isBlank() ? null : filtro.trim();
     }
 
 

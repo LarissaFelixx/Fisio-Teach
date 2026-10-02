@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev-marcoNoronha]
+  pull_request:
+    branches: [main, dev-marcoNoronha]
+  workflow_dispatch:
+
+# Um push novo na mesma branch/PR cancela a execução anterior que ainda estiver rodando.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # O relatório de testes é publicado como um check run próprio no commit/PR...
+  checks: write
+  # ...e como comentário no PR.
+  pull-requests: write
+
+jobs:
+  build-and-test:
+    name: Build e testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: fisiotech_test
+          MYSQL_USER: fisiotech
+          MYSQL_PASSWORD: fisiotech_test
+          MYSQL_ROOT_PASSWORD: root_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configurar JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # verify compila, roda os testes (H2 em memória + migrações Flyway no MySQL do service) e empacota o jar.
+      - name: Validar build, testes e migrações MySQL
+        run: ./mvnw --batch-mode --no-transfer-progress verify
+        env:
+          MYSQL_TEST_URL: jdbc:mysql://127.0.0.1:3306/fisiotech_test?allowPublicKeyRetrieval=true&useSSL=false
+          MYSQL_TEST_USERNAME: fisiotech
+          MYSQL_TEST_PASSWORD: fisiotech_test
+
+      # Roda mesmo se algum teste falhar (é justamente quando o relatório mais importa),
+      # mas não quando a execução foi cancelada por um push mais novo. Publica:
+      # - no resumo da execução: totais + tabela de todos os testes, agrupados por classe;
+      # - um check "Relatório de testes" no commit, com anotação na linha de cada falha;
+      # - em PRs, um comentário com o mesmo resumo (atualizado a cada push, não duplicado).
+      - name: Relatório de testes
+        if: ${{ !cancelled() }}
+        uses: mikepenz/action-junit-report@v6
+        with:
+          report_paths: target/surefire-reports/TEST-*.xml
+          check_name: Relatório de testes
+          detailed_summary: true
+          group_suite: true
+          include_passed: true
+          include_time_in_summary: true
+          simplified_summary: true
+          comment: ${{ github.event_name == 'pull_request' }}
+          # Quem reprova o build é o passo de build; aqui é só relatório.
+          fail_on_failure: false
+          # Se a compilação falhar não há XML de teste; não vale um segundo erro por isso.
+          require_tests: false
+
+      - name: Publicar relatórios de testes
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: target/surefire-reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Publicar aplicação
+        uses: actions/upload-artifact@v7
+        with:
+          name: fisiotech-backend
+          path: target/*.jar
+          if-no-files-found: error
