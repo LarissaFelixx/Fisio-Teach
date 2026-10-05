@@ -35,3 +35,6 @@ build/
 # JWT private keys
 *.key
 *.pem
+
+# Segredos da homologação (copiado de .env.homolog.example)
+.env.homolog
