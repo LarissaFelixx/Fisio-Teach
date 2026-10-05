@@ -1,10 +1,27 @@
-# Backlog futuro — melhorias mapeadas após a Sprint 4
+# Backlog — melhorias e pendências
 
-Este documento **não faz parte das sprints entregues**. Reúne as lacunas identificadas na
-revisão do código ao final da Sprint 4 e serve de insumo para o planejamento seguinte.
-A numeração usada aqui é local e **não** corresponde aos itens Fisio-Teach do board.
-O escopo foi derivado do estado do repositório `fisiotech-back` ao final da Sprint 4: cada
-item aponta o arquivo ou a lacuna concreta que o motiva, não uma suposição.
+Este documento reuniu as lacunas identificadas na revisão do código ao final do ciclo do
+repositório original `fisiotech-back` (Etapas 1 a 4, chamadas de "Sprints 1 a 4" no `.docx`) e
+serviu de insumo para a **Sprint 2 do board do `Fisio-Teach`**, que entregou as nove melhorias. O texto de cada melhoria
+foi mantido como registro do planejamento; o quadro abaixo mostra o que foi de fato
+implementado e onde a entrega diferiu do plano. As pendências que continuam em aberto estão
+em [Pendências atuais](#pendências-atuais).
+
+A numeração "Melhoria N" é local; a coluna *Issue* traz o número real no GitHub do `Fisio-Teach`.
+
+## Situação após a Sprint 2
+
+| Melhoria | Issue | Situação | Diferenças em relação ao plano |
+|---|---|---|---|
+| 1 — JWT | #5 | Entregue (`1928362`) | Chaves RSA (RS256) em arquivo PEM, em vez de um segredo simétrico; sessões revogáveis no banco. O interceptor do front fica no outro repositório |
+| 2 — Flyway | #6 | Entregue (`dfc1faa`) | Sem `V2__dados_iniciais`; as migrações chegaram a `V5`. H2 e MySQL usam o mesmo conjunto |
+| 3 — Homologação e APK | #8 | Parcial (`df74f93`) | Docker, Compose, profile `homolog` e CORS por variável prontos; URL pública e APK assinado dependem de infraestrutura externa |
+| 4 — CI | #10 | Entregue (`26d5f89`) | Relatório de testes na PR incluído; proteção de branch e workflow do front não fazem parte deste repositório |
+| 5 — Recuperação de senha | #11 | Entregue (`df407dd`) | Rotas `/auth/recuperar-senha` e `/auth/redefinir-senha`, com **código de 6 dígitos** em vez de token por link |
+| 6 — Evolução e plano | #12 | Entregue (`6d9b571`) | Evolução com observações, procedimentos, resposta e conduta (sem escala de dor numérica); plano versionado por revisões, sem contagem de sessões. Rotas em `/prontuario/pacientes/{id}/...` e `/me/prontuario/...` |
+| 7 — Agenda e indicadores | #13 | Entregue (`2ecde29`) | Rotas `/agenda` e `/agenda/indicadores` por período; sem média de avaliações nem contagem de remarcações |
+| 8 — Paginação | #14 | Parcial (`f13ea15`) | Paginação em pacientes, pacientes (admin) e profissionais; consultas, mensagens e caixas de entrada continuam devolvendo listas completas |
+| 9 — Testes de integração | #15 | Parcial (`7063a09`) | Autenticação, papéis, isolamento, cadastro, paginação, consultas e agenda cobertos via HTTP; mensagens, avaliações e prontuário ainda só nos testes de serviço |
 
 ---
 
@@ -179,3 +196,23 @@ Melhorias 5, 6, 7 e 8 são independentes entre si
 
 Sugestão de ordem: 2 e 1 primeiro, porque destravam a 3; a 4 em paralelo, por ser isolada;
 e as melhorias de produto (5, 6, 7 e 8) distribuídas entre os demais integrantes.
+
+---
+
+## Pendências atuais
+
+Levantadas na revisão do código após a Sprint 2. Nenhuma delas tem issue aberta ainda.
+
+| # | Pendência | Onde | Sugestão |
+|---|---|---|---|
+| P1 | Chaves JWT de exemplo da homologação usam `classpath:keys/*.pem`, que nunca entram na imagem (`*.pem` ignorado pelo Git e pelo Docker) | `.env.homolog.example` | Trocar por `file:/run/keys/*.pem` e declarar o volume em `compose.homolog.yml` |
+| P2 | O profissional define o campo `autor` em `POST /mensagens` e pode gravar mensagem como `PACIENTE` | `MensagemCreateRequest`, `MensagemService.enviar` | Remover `autor` do request e fixar `PROFISSIONAL`, como já é feito em `/me/mensagens` |
+| P3 | Agendamento aceita horário fora da grade de 30 min e datas no passado | `ConsultaService.validarHorarioLivre` | Validar `dataHora` futura e alinhada à grade de `DisponibilidadeService` |
+| P4 | Grade de disponibilidade fixa (08:00–17:30, todos os dias) | `DisponibilidadeService` | Expediente configurável por profissional, com dias de folga |
+| P5 | Listagens sem paginação: consultas, agenda, mensagens e caixas de entrada | controllers de `consulta`, `mensagem`, `me` | Completar a Melhoria 8 |
+| P6 | Mensagens, avaliações e prontuário sem testes HTTP | `src/test` | Completar a Melhoria 9 |
+| P7 | Erro de validação não informa o campo inválido | `ApiExceptionHandler.handleValidation` | Incluir a lista de campos e mensagens dos DTOs |
+| P8 | Sem limpeza de sessões, refresh tokens e códigos de recuperação expirados | `auth_*`, `codigos_recuperacao_senha` | Tarefa agendada (`@Scheduled`) respeitando a ordem descrita em [Autenticação JWT](autenticacao-jwt.md#banco-de-produção-e-implantação) |
+| P9 | Sem limite de frequência em `/auth/login` e `/auth/recuperar-senha` | `AuthController` | Rate limiting por IP/email na aplicação ou no proxy |
+| P10 | Nomes de variáveis diferentes entre `homolog` e `prod` (`DB_USER`/`DB_USERNAME`, `ADMIN_PASSWORD`/`ADMIN_SENHA`, `MAIL_*`/`SPRING_MAIL_*`) | `application-homolog.properties`, `application-prod.properties` | Unificar os nomes |
+| P11 | Arquivos sem uso no repositório: `arquivo.txt` e `src/main/resources/TODO` (vazio) | raiz e `resources` | Remover, se a equipe confirmar |

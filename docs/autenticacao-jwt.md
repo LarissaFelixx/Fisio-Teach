@@ -122,19 +122,23 @@ Trocar o par invalida os JWTs existentes; não há sobreposição automática de
 ## Banco de produção e implantação
 
 O projeto usa Flyway e mantém `ddl-auto=validate`. Em banco vazio, as migrações
-`V1` e `V2` criam o esquema completo. Em banco legado não vazio e ainda sem histórico
-do Flyway, `baseline-on-migrate` registra a estrutura existente como versão 1 e executa
-a migração JWT da versão 2.
+`V1` a `V5` criam o esquema completo (lista em [Arquitetura](arquitetura.md#modelo-de-dados)).
+Em banco legado não vazio e ainda sem histórico do Flyway, `baseline-on-migrate` registra
+a estrutura existente como versão 1 e aplica a partir da `V2` (JWT), seguida de `V3` a `V5`.
 
 1. Fazer backup e parar as instâncias antigas antes da alteração.
-2. Executar `src/main/resources/db/manual/000-audit-emails.sql`. Resolver os emails
-   duplicados retornados antes de prosseguir, sem excluir contas automaticamente.
+2. Executar `src/main/resources/db/manual/000-audit-emails.sql` (somente leitura). Resolver
+   os emails duplicados retornados antes de prosseguir, sem excluir contas automaticamente.
 3. Iniciar a nova versão, que executará `src/main/resources/db/migration/V2__seguranca_jwt.sql`.
    Ela acrescenta três tabelas e preenche o registro de emails das contas existentes.
    DDL no MySQL não é integralmente transacional: se houver erro, inspecionar as
    tabelas criadas e corrigir a causa antes de repetir qualquer etapa.
 4. Configurar as chaves e iniciar com `prod`. O Hibernate valida o esquema.
 5. Publicar o aplicativo que utiliza Bearer e verificar login, renovação e logout.
+
+> **`db/manual/001-jwt-security.sql`** é a versão manual da `V2`, anterior à adoção do
+> Flyway, mantida apenas como referência. **Não execute** esse script em um banco que será
+> gerenciado pelo Flyway: as tabelas `auth_*` já existiriam e a `V2` falharia na subida.
 
 O registro `auth_emails` impõe unicidade entre os três tipos de conta, inclusive em
 cadastros concorrentes. Todas as alterações de email passam pelo mesmo registro
