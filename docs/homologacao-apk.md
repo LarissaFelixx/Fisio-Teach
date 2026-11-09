@@ -79,7 +79,7 @@ admin é criado se a tabela `admins` estiver vazia.
 | `MAIL_USERNAME` / `MAIL_PASSWORD` | vazio | Declarar, mesmo vazias |
 | `MAIL_SMTP_AUTH` / `MAIL_STARTTLS` | — | Opcionais; padrão `true` |
 | `MAIL_FROM` | `no-reply@homolog.example` | Remetente do código de recuperação |
-| `CORS_ALLOWED_ORIGINS` | `https://app-homolog.example,capacitor://localhost` | Origens do app, separadas por vírgula |
+| `CORS_ALLOWED_ORIGINS` | `https://app-homolog.example,capacitor://localhost` | Origens de clientes web, separadas por vírgula |
 | `APP_ENVIRONMENT` | `homolog` | Exibida em `/actuator/info` |
 | `API_PORT` | — | Opcional; porta publicada no host, padrão `8080` |
 
@@ -89,22 +89,22 @@ no cabeçalho `Authorization` e o refresh token no corpo das requisições.
 ## Projeto mobile e APK
 
 Este repositório contém somente o backend. O app fica em
-[LarissaFelixx/FisioTech-front](https://github.com/LarissaFelixx/FisioTech-front). No projeto mobile, aponte a URL
-da API para a homologação (ex. `MOBILE_API_URL=https://api-homolog.example`) e inclua a origem do
-app em `CORS_ALLOWED_ORIGINS` (`capacitor://localhost` no Android/iOS empacotado). Para
-Capacitor/Angular, o fluxo genérico é:
+[LarissaFelixx/FisioTech-front](https://github.com/LarissaFelixx/FisioTech-front) (React Native + Expo). A URL da
+API fica **embutida** no APK no momento do build, pela variável `EXPO_PUBLIC_API_URL`:
 
 ```bash
 npm ci
-npm run build
-npx cap sync android
-cd android
-./gradlew assembleDebug
+EXPO_PUBLIC_API_URL=https://api-homolog.example npm run build:apk
 ```
 
-O APK resultante fica normalmente em `android/app/build/outputs/apk/debug/app-debug.apk`. Para
-entrega assinada, configure o keystore no ambiente de CI e execute `bundleRelease` ou
-`assembleRelease`.
+O APK sai em `build/fisiotech-<versão>.apk` (requer JDK 17+ e Android SDK). É um build de release
+assinado com a chave de **debug**: serve para homologação, não para publicação em loja. A
+assinatura com keystore próprio ainda não está configurada no projeto do app.
+
+O app faz chamadas nativas, sem cabeçalho `Origin`, então não precisa constar em
+`CORS_ALLOWED_ORIGINS`; a variável continua obrigatória no profile `homolog` e vale para clientes
+web. Hoje o app permite HTTP em texto puro (`usesCleartextTraffic` no `app.json`), o que deve ser
+desligado quando a homologação estiver em HTTPS.
 
 O app precisa seguir o contrato de tokens descrito em
 [Autenticação JWT — Aplicativo mobile](autenticacao-jwt.md#aplicativo-mobile).

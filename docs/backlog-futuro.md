@@ -72,7 +72,7 @@ aponta para `localhost`. O `corsConfigurationSource` tem origens fixas
 **Escopo**
 - Publicar a API em um provedor gratuito/estudantil com MySQL gerenciado.
 - Tornar as origens CORS configuráveis por variável de ambiente em vez de constantes no código.
-- Build de produção do Angular apontando para a URL publicada e novo `.apk` assinado.
+- Build do app (React Native + Expo) apontando para a URL publicada e novo `.apk` assinado.
 - Registrar no README a URL de homologação e as variáveis necessárias.
 
 **Critério de aceite:** o `.apk` instalado em um celular qualquer, fora da rede de

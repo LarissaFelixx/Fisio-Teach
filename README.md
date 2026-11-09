@@ -9,9 +9,11 @@ clínico), **prontuário** (evoluções e plano terapêutico), **agenda com indi
 remarca ou cancela consultas, conversa com o profissional e acompanha o próprio tratamento
 pela área de autoatendimento `/me`.
 
-O cliente é um aplicativo Angular + Capacitor mantido em outro repositório:
-[LarissaFelixx/FisioTech-front](https://github.com/LarissaFelixx/FisioTech-front)
-(originalmente [gabrielneriqa/fisiotech-front](https://github.com/gabrielneriqa/fisiotech-front)).
+O cliente é um aplicativo Android em **React Native + Expo**, mantido em outro repositório:
+[LarissaFelixx/FisioTech-front](https://github.com/LarissaFelixx/FisioTech-front). Ele substituiu
+o front original em Angular + Capacitor
+([gabrielneriqa/fisiotech-front](https://github.com/gabrielneriqa/fisiotech-front)), que não é
+mais evoluído.
 
 ## Sumário
 
@@ -87,7 +89,9 @@ O banco é **em memória**: todo dado se perde ao reiniciar, e os JWTs emitidos 
 
 No Swagger, faça `POST /auth/login`, copie só o `accessToken` e cole em **Authorize**.
 
-Se mudar a porta, ajuste também o `proxy.conf.js` do front-end.
+Se mudar a porta, ajuste também o `EXPO_PUBLIC_API_URL` no `.env` do app (no emulador Android,
+`http://10.0.2.2:<porta>`; no celular, o IP do computador na rede). Não use a **8081**: é a
+porta do Metro, o servidor de desenvolvimento do Expo.
 
 ## Profiles e configuração
 
