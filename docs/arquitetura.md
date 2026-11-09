@@ -7,8 +7,8 @@ negócio estão implementadas. Para a lista de endpoints, veja a
 ## Visão geral
 
 ```
-App mobile (Angular + Capacitor)  ──HTTPS + Bearer JWT──►  API Spring Boot  ──JPA/Flyway──►  MySQL 8 (homolog/prod)
-Dev server Angular (:4200)                                   │                               H2 em memória (dev/testes)
+App mobile (React Native + Expo)  ──HTTPS + Bearer JWT──►  API Spring Boot  ──JPA/Flyway──►  MySQL 8 (homolog/prod)
+                                                             │                               H2 em memória (dev/testes)
                                                              └── SMTP (código de recuperação de senha)
 ```
 
@@ -93,6 +93,9 @@ codigos_recuperacao_senha (por email)
 - CORS: origens vindas de `app.cors.allowed-origins` (`CORS_ALLOWED_ORIGINS`); por padrão
   `http://localhost`, `https://localhost`, `capacitor://localhost` e `http://localhost:4200`.
   Métodos `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`; cabeçalhos `Authorization` e `Content-Type`.
+  Esses padrões vêm do front antigo (Angular + Capacitor). O app React Native faz chamadas
+  nativas, sem cabeçalho `Origin`, e por isso não depende de CORS; a configuração só importa
+  para clientes que rodam em navegador.
 - Respostas 401 e 403 do filtro de segurança têm corpo JSON, e as 401 trazem
   `WWW-Authenticate: Bearer` (nunca `Basic`), para o navegador não abrir o popup nativo de
   login. O 401 de credenciais erradas em `/auth/login` vem do `ApiExceptionHandler`, sem esse
